@@ -1,7 +1,7 @@
 import request from 'supertest';
 import httpStatus from 'http-status';
 import { app } from '../../src/app.js';
-import setupTestDB from '../utils/setupTestDB.js';
+import { setupTestDB } from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
 import { userOne, userTwo, insertUsers } from '../fixtures/user.fixture.js';
 import { userOneAccessToken } from '../fixtures/token.fixture.js';

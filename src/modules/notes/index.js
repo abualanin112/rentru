@@ -1,4 +1,4 @@
-export * from './note.service.js';
+export { createNote, queryNotes, getNoteById, updateNoteById, deleteNoteById, deleteManyByOwnerId } from './note.service.js';
 import { noteRoutes } from './note.route.js';
 
 /**

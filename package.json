@@ -1,5 +1,5 @@
 {
-  "name": "notes-backend",
+  "name": "Rentru",
   "version": "2.0.0",
   "description": "Production-grade Notes API built with Express, Prisma, PostgreSQL, and Docker",
   "bin": "bin/createNodejsApp.js",
@@ -7,7 +7,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/notes-backend.git"
+    "url": "https://github.com/abualanin112/rentru.git"
   },
   "author": "Abdullah",
   "license": "MIT",
@@ -29,9 +29,6 @@
     "lint:fix": "eslint . --fix",
     "prettier": "prettier --check .",
     "prettier:fix": "prettier --write .",
-    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up",
-    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
-    "docker:test": "docker-compose -f docker-compose.yml -f docker-compose.test.yml up",
     "prepare": "husky"
   },
   "keywords": [
@@ -49,7 +46,6 @@
     "prisma",
     "sql",
     "docker",
-    "docker-compose",
     "authentication",
     "jwt",
     "passport",

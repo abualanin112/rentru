@@ -1,5 +1,5 @@
 import pinoHttp from 'pino-http';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { baseLogger } from '../infrastructure/logger.js';
 
 const pinoMiddleware = pinoHttp({

@@ -34,14 +34,16 @@ const refreshTokens = catchAsync(async (req, res, next) => {
 
 const forgotPassword = catchAsync(async (req, res, next) => {
   const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
-  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
+  if (resetPasswordToken) {
+    await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
+  }
   res.locals.statusCode = httpStatus.NO_CONTENT;
   res.locals.payload = null;
   next();
 });
 
 const resetPassword = catchAsync(async (req, res, next) => {
-  await authService.resetPassword(req.query.token, req.body.password);
+  await authService.resetPassword(req.body.token, req.body.password);
   res.locals.statusCode = httpStatus.NO_CONTENT;
   res.locals.payload = null;
   next();
@@ -56,7 +58,7 @@ const sendVerificationEmail = catchAsync(async (req, res, next) => {
 });
 
 const verifyEmail = catchAsync(async (req, res, next) => {
-  await authService.verifyEmail(req.query.token);
+  await authService.verifyEmail(req.body.token);
   res.locals.statusCode = httpStatus.NO_CONTENT;
   res.locals.payload = null;
   next();

@@ -1,10 +1,8 @@
 import jwt from 'jsonwebtoken';
 import dayjs from 'dayjs';
-import crypto from 'crypto';
-import httpStatus from 'http-status';
+import crypto from 'node:crypto';
 import { getUserByEmail } from './user.service.js';
 import { create as createTokenRecord, findOne as findTokenRecord } from '../repositories/token.repository.js';
-import { ApiError } from '../../../shared/ApiError.js';
 import { tokenTypes } from '../../../shared/Tokens.js';
 import { config } from '../../../infrastructure/config.js';
 
@@ -138,7 +136,7 @@ const generateAuthTokens = async (user, tx, familyId = null, ip = null, userAgen
 const generateResetPasswordToken = async (email, tx) => {
   const user = await getUserByEmail(email);
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No users found with this email');
+    return null;
   }
   const expires = dayjs().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
   const resetPasswordToken = generateToken(user.id, expires, tokenTypes.RESET_PASSWORD);

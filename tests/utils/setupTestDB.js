@@ -13,7 +13,7 @@ const setupTestDB = () => {
   beforeEach(async () => {
     // Truncate all tables using actual PostgreSQL table names (@@map values)
     // to ensure complete data isolation between individual tests
-    await prisma.$executeRaw`TRUNCATE TABLE "notes", "tokens", "users", "audit_logs" CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "notes", "tokens", "users", "audit_logs", "user_roles", "role_permissions", "rbac_roles", "permissions" CASCADE;`;
   });
 
   afterAll(async () => {
@@ -23,4 +23,4 @@ const setupTestDB = () => {
   });
 };
 
-export default setupTestDB;
+export { setupTestDB };

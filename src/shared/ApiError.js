@@ -1,6 +1,7 @@
 export class ApiError extends Error {
   constructor(statusCode, message, isOperational = true, stack = '', cause = null) {
     super(message, { cause });
+    this.name = 'ApiError';
     this.statusCode = statusCode;
     this.isOperational = isOperational;
     if (cause) {

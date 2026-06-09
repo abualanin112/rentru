@@ -213,13 +213,6 @@ export { router as authRoutes };
  *   post:
  *     summary: Reset password
  *     tags: [Auth]
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: The reset password token
  *     requestBody:
  *       required: true
  *       content:
@@ -227,14 +220,19 @@ export { router as authRoutes };
  *           schema:
  *             type: object
  *             required:
+ *               - token
  *               - password
  *             properties:
+ *               token:
+ *                 type: string
+ *                 description: The reset password token
  *               password:
  *                 type: string
  *                 format: password
  *                 minLength: 8
  *                 description: At least one number and one letter
  *             example:
+ *               token: eyJhbGci...
  *               password: password1
  *     responses:
  *       "204":
@@ -272,13 +270,20 @@ export { router as authRoutes };
  *   post:
  *     summary: verify email
  *     tags: [Auth]
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: The verify email token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: The verify email token
+ *             example:
+ *               token: eyJhbGci...
  *     responses:
  *       "204":
  *         description: No content

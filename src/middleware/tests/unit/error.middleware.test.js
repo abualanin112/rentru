@@ -119,7 +119,7 @@ describe('Error middlewares', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          error: expect.objectContaining({ code: 'Error', message: error.message }),
+          error: expect.objectContaining({ code: 'ApiError', message: error.message }),
         }),
       );
       expect(res.locals.errorMessage).toBe(error.message);
@@ -136,7 +136,7 @@ describe('Error middlewares', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          error: expect.objectContaining({ code: 'Error', message: error.message, stack: error.stack }),
+          error: expect.objectContaining({ code: 'ApiError', message: error.message, stack: error.stack }),
         }),
       );
       config.env = process.env.NODE_ENV;
@@ -174,10 +174,10 @@ describe('Error middlewares', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          error: expect.objectContaining({
-            code: 'Error',
-            message: error.message,
-          }),
+          error: {
+            code: 'ApiError',
+            message: 'Any error',
+          },
         }),
       );
       config.env = process.env.NODE_ENV;

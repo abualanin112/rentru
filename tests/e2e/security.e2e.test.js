@@ -1,4 +1,4 @@
-import setupTestDB from '../utils/setupTestDB.js';
+import { setupTestDB } from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
 
 import * as authorizationService from '../../src/modules/iam/services/authorization.service.js';

@@ -11,7 +11,7 @@ import { ApiError } from '../../src/shared/ApiError.js';
 import { auth } from '../../src/middleware/auth.middleware.js';
 import * as tokenService from '../../src/modules/iam/services/token.service.js';
 import * as emailService from '../../src/modules/iam/services/email.service.js';
-import setupTestDB from '../utils/setupTestDB.js';
+import { setupTestDB } from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
 
 import { userOne, admin, insertUsers } from '../fixtures/user.fixture.js';
@@ -147,8 +147,8 @@ describe('Auth routes', () => {
       await request(app).post('/v1/auth/logout').send().expect(httpStatus.BAD_REQUEST);
     });
 
-    test('should return 404 if refresh token is invalid', async () => {
-      await request(app).post('/v1/auth/logout').send({ refreshToken: 'invalidToken' }).expect(httpStatus.NOT_FOUND);
+    test('should return 204 if refresh token is invalid (idempotent)', async () => {
+      await request(app).post('/v1/auth/logout').send({ refreshToken: 'invalidToken' }).expect(httpStatus.NO_CONTENT);
     });
   });
 
@@ -210,8 +210,8 @@ describe('Auth routes', () => {
       await request(app).post('/v1/auth/forgot-password').send().expect(httpStatus.BAD_REQUEST);
     });
 
-    test('should return 404 if email does not belong to any user', async () => {
-      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NOT_FOUND);
+    test('should return 204 if email does not belong to any user (anti-enumeration)', async () => {
+      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NO_CONTENT);
     });
   });
 
@@ -224,8 +224,7 @@ describe('Auth routes', () => {
 
       await request(app)
         .post('/v1/auth/reset-password')
-        .query({ token: resetPasswordToken })
-        .send({ password: 'password2' })
+        .send({ token: resetPasswordToken, password: 'password2' })
         .expect(httpStatus.NO_CONTENT);
 
       const dbUser = await prisma.user.findUnique({
@@ -255,8 +254,7 @@ describe('Auth routes', () => {
 
       await request(app)
         .post('/v1/auth/reset-password')
-        .query({ token: resetPasswordToken })
-        .send({ password: 'password2' })
+        .send({ token: resetPasswordToken, password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
     });
 
@@ -268,8 +266,7 @@ describe('Auth routes', () => {
 
       await request(app)
         .post('/v1/auth/reset-password')
-        .query({ token: resetPasswordToken })
-        .send({ password: 'password2' })
+        .send({ token: resetPasswordToken, password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
     });
 
@@ -282,8 +279,7 @@ describe('Auth routes', () => {
 
       await request(app)
         .post('/v1/auth/reset-password')
-        .query({ token: resetPasswordToken })
-        .send({ password: 'password2' })
+        .send({ token: resetPasswordToken, password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
     });
 
@@ -352,11 +348,7 @@ describe('Auth routes', () => {
       const verifyEmailToken = tokenService.generateToken(userOne.id, expires);
       await tokenService.saveToken(verifyEmailToken, userOne.id, expires, tokenTypes.VERIFY_EMAIL);
 
-      await request(app)
-        .post('/v1/auth/verify-email')
-        .query({ token: verifyEmailToken })
-        .send()
-        .expect(httpStatus.NO_CONTENT);
+      await request(app).post('/v1/auth/verify-email').send({ token: verifyEmailToken }).expect(httpStatus.NO_CONTENT);
 
       const dbUser = await prisma.user.findUnique({ where: { id: userOne.id } });
 
@@ -383,11 +375,7 @@ describe('Auth routes', () => {
       const verifyEmailToken = tokenService.generateToken(userOne.id, expires);
       await tokenService.saveToken(verifyEmailToken, userOne.id, expires, tokenTypes.VERIFY_EMAIL, true);
 
-      await request(app)
-        .post('/v1/auth/verify-email')
-        .query({ token: verifyEmailToken })
-        .send()
-        .expect(httpStatus.UNAUTHORIZED);
+      await request(app).post('/v1/auth/verify-email').send({ token: verifyEmailToken }).expect(httpStatus.UNAUTHORIZED);
     });
 
     test('should return 401 if verify email token is expired', async () => {
@@ -396,11 +384,7 @@ describe('Auth routes', () => {
       const verifyEmailToken = tokenService.generateToken(userOne.id, expires);
       await tokenService.saveToken(verifyEmailToken, userOne.id, expires, tokenTypes.VERIFY_EMAIL);
 
-      await request(app)
-        .post('/v1/auth/verify-email')
-        .query({ token: verifyEmailToken })
-        .send()
-        .expect(httpStatus.UNAUTHORIZED);
+      await request(app).post('/v1/auth/verify-email').send({ token: verifyEmailToken }).expect(httpStatus.UNAUTHORIZED);
     });
 
     test('should return 401 if user is not found', async () => {
@@ -409,11 +393,7 @@ describe('Auth routes', () => {
       const verifyEmailToken = tokenService.generateToken(userOne.id, expires);
       await tokenService.saveToken(verifyEmailToken, admin.id, expires, tokenTypes.VERIFY_EMAIL);
 
-      await request(app)
-        .post('/v1/auth/verify-email')
-        .query({ token: verifyEmailToken })
-        .send()
-        .expect(httpStatus.UNAUTHORIZED);
+      await request(app).post('/v1/auth/verify-email').send({ token: verifyEmailToken }).expect(httpStatus.UNAUTHORIZED);
     });
   });
 

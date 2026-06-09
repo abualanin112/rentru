@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
  * @returns {Promise<string>} Hashed password
  */
 const hashPassword = async (password) => {
-  return bcrypt.hash(password, 8);
+  return bcrypt.hash(password, 12);
 };
 
 /**

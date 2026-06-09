@@ -1,6 +1,6 @@
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import path from 'path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { config } from '../infrastructure/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

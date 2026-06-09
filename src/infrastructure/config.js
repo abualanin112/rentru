@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
-import path from 'path';
+import path from 'node:path';
 import { z } from 'zod';
 
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +12,7 @@ const envVarsSchema = z
   .object({
     NODE_ENV: z.enum(['production', 'development', 'test']),
     PORT: z.coerce.number().default(3000),
+    APP_URL: z.string().url().default('http://localhost:3000').describe('Public-facing application URL'),
     DATABASE_URL: z.string().describe('PostgreSQL connection URL'),
     CORS_ORIGINS: z
       .string()
@@ -56,6 +57,7 @@ const envVars = result.data;
 const config = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
+  appUrl: envVars.APP_URL,
   enableBackgroundWorkers: envVars.ENABLE_BACKGROUND_WORKERS,
   prisma: {
     url: envVars.DATABASE_URL,

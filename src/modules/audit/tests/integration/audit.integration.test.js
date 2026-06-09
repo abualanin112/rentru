@@ -1,7 +1,7 @@
 import { runInTransaction, prisma } from '../../../../infrastructure/prisma.js';
 import { logEvent } from '../../index.js';
 import { als } from '../../../../infrastructure/als.js';
-import setupTestDB from '../../../../../tests/utils/setupTestDB.js';
+import { setupTestDB } from '../../../../../tests/utils/setupTestDB.js';
 
 setupTestDB();
 

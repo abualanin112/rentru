@@ -2,7 +2,7 @@ import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import httpStatus from 'http-status';
 import { app } from '../../src/app.js';
-import setupTestDB from '../utils/setupTestDB.js';
+import { setupTestDB } from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
 
 import { userOne, userTwo, admin, insertUsers } from '../fixtures/user.fixture.js';

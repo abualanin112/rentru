@@ -80,6 +80,18 @@ const getUserById = async (id) => {
 };
 
 /**
+ * Find user by ID with optional select projection.
+ * Used by infrastructure (passport) for lightweight lookups.
+ * @param {string} id
+ * @param {Object} [options]
+ * @param {Object} [options.select] - Prisma select projection
+ * @returns {Promise<Object|null>}
+ */
+const findUserById = async (id, options = {}) => {
+  return findById(id, options);
+};
+
+/**
  * Get user by email
  * @param {string} email
  * @returns {Promise<Object|null>}
@@ -164,4 +176,13 @@ const deleteUserById = async (userId) => {
   return user;
 };
 
-export { createUser, queryUsers, getUserById, getUserByEmail, updateUserById, deleteUserById, registerUserDeletionHook };
+export {
+  createUser,
+  queryUsers,
+  getUserById,
+  getUserByEmail,
+  updateUserById,
+  deleteUserById,
+  registerUserDeletionHook,
+  findUserById,
+};

@@ -1,5 +1,5 @@
 /* eslint-disable n/no-process-exit */
-import { monitorEventLoopDelay } from 'perf_hooks';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { app } from './app.js';
 import { config } from './infrastructure/config.js';
 import { startMetricsFlusher } from './infrastructure/metrics.js';
@@ -118,7 +118,7 @@ const exitHandler = () => {
   performShutdown()
     .then(() => {
       clearTimeout(forceExitTimeout);
-      process.exit(1);
+      process.exit(0);
     })
     .catch((err) => {
       logger.error({ err }, 'Error during emergency shutdown');

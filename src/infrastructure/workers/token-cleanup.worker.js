@@ -1,11 +1,11 @@
 import cron from 'node-cron';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { als as asyncLocalStorage } from '../als.js';
 import { metrics } from '../metrics.js';
 import { logger } from '../logger.js';
 import { prisma } from '../prisma.js';
-import { deleteExpiredTokens } from '../../modules/iam/repositories/token.repository.js';
+import { tokenService } from '../../modules/iam/index.js';
 
 const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
 const PG_ADVISORY_LOCK_ID = 880011; // Unique lock ID for token cleanup
@@ -27,7 +27,7 @@ const executeWithLock = async (jobId) => {
     logger.info({ event: 'system.worker.started', jobId }, 'Starting automated token cleanup job');
 
     // Timeout wrapper - does NOT cancel prisma query but prevents worker from hanging indefinitely
-    const executionPromise = deleteExpiredTokens();
+    const executionPromise = tokenService.deleteExpiredTokens();
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error('Worker timeout exceeded')), TIMEOUT_MS);

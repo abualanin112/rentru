@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 const ALS_SYMBOL = Symbol.for('notes-backend.shared.als.singleton');
 

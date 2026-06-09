@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { verifyToken, generateAuthTokens } from './token.service.js';
 import { findByEmail, findById as findUserById, updateById as updateUserById } from '../repositories/user.repository.js';
 import {
@@ -55,17 +55,16 @@ const logout = async (refreshToken) => {
     type: tokenTypes.REFRESH,
     blacklisted: false,
   });
-  if (!refreshTokenDoc) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Not found');
-  }
-  await deleteTokenById(refreshTokenDoc.id);
+  if (refreshTokenDoc) {
+    await deleteTokenById(refreshTokenDoc.id);
 
-  await logEvent({
-    event: 'auth.logout',
-    entityType: 'User',
-    entityId: refreshTokenDoc.userId,
-    action: 'EXECUTE',
-  });
+    await logEvent({
+      event: 'auth.logout',
+      entityType: 'User',
+      entityId: refreshTokenDoc.userId,
+      action: 'EXECUTE',
+    });
+  }
 };
 
 /**
@@ -159,8 +158,9 @@ const resetPassword = async (resetPasswordToken, newPassword) => {
         tx,
       );
     });
-  } catch {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed');
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed', true, '', error);
   }
 };
 
@@ -188,8 +188,9 @@ const verifyEmail = async (verifyEmailToken) => {
       );
       await updateUserById(user.id, { isEmailVerified: true }, tx);
     });
-  } catch {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Email verification failed');
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Email verification failed', true, '', error);
   }
 };
 

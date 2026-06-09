@@ -39,10 +39,8 @@ const forgotPassword = z.object({
 });
 
 const resetPassword = z.object({
-  query: z.object({
-    token: z.string(),
-  }),
   body: z.object({
+    token: z.string(),
     password: z.string().refine(password, {
       message: 'password must be at least 8 characters and contain at least 1 letter and 1 number',
     }),
@@ -50,7 +48,7 @@ const resetPassword = z.object({
 });
 
 const verifyEmail = z.object({
-  query: z.object({
+  body: z.object({
     token: z.string(),
   }),
 });
