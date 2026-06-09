@@ -5,7 +5,6 @@ import { config } from './infrastructure/config.js';
 import { startMetricsFlusher } from './infrastructure/metrics.js';
 import { logger } from './infrastructure/logger.js';
 import { prisma } from './infrastructure/prisma.js';
-import { getRedisClient, disconnectRedis } from './infrastructure/redis.js';
 import { startTokenCleanupJob } from './infrastructure/workers/token-cleanup.worker.js';
 
 let server;
@@ -37,16 +36,6 @@ const bootstrap = async () => {
     logger.info('Asserting PostgreSQL database connectivity...');
     await prisma.$queryRaw`SELECT 1`;
     logger.info('Successfully connected to PostgreSQL');
-
-    // 2. Initialize secondary cache (Redis) before HTTP binding
-    logger.info('Asserting Redis cache connectivity...');
-    const redisClient = await getRedisClient();
-    if (!redisClient) {
-      logger.warn(
-        { event: 'cache.redis.degraded' },
-        'Redis failed to initialize at startup. Running in DEGRADED memory-cache mode.',
-      );
-    }
 
     // 3. Open HTTP Listener
     server = app.listen(config.port, () => {
@@ -102,16 +91,6 @@ const performShutdown = async () => {
     } catch (err) {
       logger.warn({ err }, 'Not all workers completed cleanly during shutdown');
     }
-  }
-
-  // 4. Disconnect Redis
-  try {
-    if (typeof disconnectRedis === 'function') {
-      await disconnectRedis();
-      logger.info('Redis client disconnected');
-    }
-  } catch (err) {
-    logger.error('Failed to disconnect Redis client:', err);
   }
 
   // 5. Disconnect Prisma

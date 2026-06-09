@@ -4,27 +4,20 @@ import crypto from 'crypto';
 import { als as asyncLocalStorage } from '../als.js';
 import { metrics } from '../metrics.js';
 import { logger } from '../logger.js';
-import { getRedisClient } from '../redis.js';
+import { prisma } from '../prisma.js';
 import { deleteExpiredTokens } from '../../modules/iam/repositories/token.repository.js';
 
-const LOCK_KEY = 'worker:lock:tokenCleanup';
-const LOCK_TTL_SECONDS = 300; // 5 minutes max execution time lock
 const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+const PG_ADVISORY_LOCK_ID = 880011; // Unique lock ID for token cleanup
 
 const executeWithLock = async (jobId) => {
-  const client = await getRedisClient();
-  if (client) {
-    // Attempt to acquire distributed singleton lock via SETNX
-    const acquired = await client.set(LOCK_KEY, jobId, { NX: true, EX: LOCK_TTL_SECONDS });
-    if (!acquired) {
-      logger.info({ event: 'system.worker.skipped', jobId }, 'Another instance is running this worker job. Skipping.');
-      return;
-    }
-  } else {
-    logger.warn(
-      { event: 'cache.redis.degraded', jobId },
-      'Redis degraded. Proceeding without lock. Duplicate execution may occur.',
-    );
+  // Attempt to acquire distributed singleton lock via Postgres
+  const lockResult = await prisma.$queryRaw`SELECT pg_try_advisory_lock(${PG_ADVISORY_LOCK_ID}) as acquired`;
+  const acquired = lockResult[0]?.acquired;
+
+  if (!acquired) {
+    logger.info({ event: 'system.worker.skipped', jobId }, 'Another instance is running this worker job. Skipping.');
+    return;
   }
 
   const start = performance.now();
@@ -58,13 +51,8 @@ const executeWithLock = async (jobId) => {
     metrics.workers.active -= 1;
     metrics.workers.totalDurationMs += performance.now() - start;
 
-    if (client) {
-      // Release lock if we hold it
-      const lockValue = await client.get(LOCK_KEY);
-      if (lockValue === jobId) {
-        await client.del(LOCK_KEY);
-      }
-    }
+    // Release advisory lock
+    await prisma.$executeRaw`SELECT pg_advisory_unlock(${PG_ADVISORY_LOCK_ID})`;
   }
 };
 

@@ -14,7 +14,6 @@ import * as responseInterceptor from './middleware/response-interceptor.middlewa
 import { v1Router } from './modules/router.js';
 import { jwtStrategy } from './infrastructure/passport.js';
 import { prisma } from './infrastructure/prisma.js';
-import { isRedisDegraded } from './infrastructure/redis.js';
 
 const { apiLimiter } = rateLimiter;
 const { errorConverter, errorHandler } = error;
@@ -72,14 +71,9 @@ app.get('/health', async (req, res) => {
     databaseStatus = 'DOWN';
   }
 
-  const isCacheDegraded = isRedisDegraded();
-  const cacheStatus = isCacheDegraded ? 'DEGRADED' : 'UP';
-
   let overallStatus = 'UP';
   if (databaseStatus === 'DOWN') {
     overallStatus = 'DOWN';
-  } else if (isCacheDegraded) {
-    overallStatus = 'DEGRADED';
   }
 
   const payload = {
@@ -87,12 +81,10 @@ app.get('/health', async (req, res) => {
     uptime: process.uptime(),
     environment: config.env,
     database: databaseStatus,
-    cache: cacheStatus,
     workers: config.enableBackgroundWorkers ? 'ENABLED' : 'DISABLED',
     timestamp: new Date().toISOString(),
   };
 
-  // MUST return HTTP 200 for DEGRADED so orchestrators don't aggressively kill the pod
   const statusCode = databaseStatus === 'UP' ? httpStatus.OK : httpStatus.SERVICE_UNAVAILABLE;
   res.status(statusCode).send(payload);
 });

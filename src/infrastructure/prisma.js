@@ -93,32 +93,10 @@ const createClientInstance = () => {
 let prismaClient = createClientInstance();
 
 /**
- * High-Availability Proxy Object:
- * Intercepts all database calls and routes them to the active client instance.
- * Exposes a custom hidden method `$reconnect()` to wipe out old cache and sync with test runtimes.
+ * Prisma Client Export
+ * Standard Singleton for all environments.
  */
-const prisma = new Proxy(
-  {},
-  {
-    get(target, prop) {
-      // Hidden lifecycle hook called inside setupTestDB.js to break module caching
-      if (prop === '$reconnect') {
-        return () => {
-          logger.info('[Prisma Proxy] Evicting connection cache. Re-instantiating client for Testcontainers...');
-          prismaClient = createClientInstance();
-        };
-      }
-
-      // Safely forward standard parameters and bind repository queries
-      // eslint-disable-next-line security/detect-object-injection
-      const value = prismaClient[prop];
-      if (typeof value === 'function') {
-        return value.bind(prismaClient);
-      }
-      return value;
-    },
-  },
-);
+const prisma = prismaClient;
 
 const runInTransaction = (callback) => prisma.$transaction(callback);
 

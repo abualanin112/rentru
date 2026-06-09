@@ -69,7 +69,8 @@ const create = async (noteBody, tx = prisma) => {
  * @param {Object} [tx=prisma] - Optional Prisma transaction client
  * @returns {Promise<Object|null>}
  */
-const findById = async (id, { includeOwner = false } = {}, tx = prisma) => {
+const findById = async (id, options = {}, tx = prisma) => {
+  const { includeOwner = false } = options;
   return tx.note.findUnique({
     where: { id },
     ...(includeOwner && { include: cleanNoteIncludes }),

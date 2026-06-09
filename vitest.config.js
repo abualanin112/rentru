@@ -12,6 +12,7 @@ export default defineConfig({
     restoreMocks: true,
     fileParallelism: false,
     pool: 'forks',
+    setupFiles: ['./tests/utils/setupEnv.js'],
     globalSetup: ['./tests/utils/globalSetup.js'],
     coverage: {
       provider: 'v8',

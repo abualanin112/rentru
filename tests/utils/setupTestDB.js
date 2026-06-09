@@ -10,18 +10,6 @@
 import { prisma } from '../../src/infrastructure/prisma.js';
 
 const setupTestDB = () => {
-  beforeAll(async () => {
-    // Dynamically import vitest to avoid CJS/ESM incompatibility
-    const { inject } = await import('vitest');
-
-    // Retrieve the DATABASE_URL provided by globalSetup via Vitest's inject channel
-    const databaseUrl = inject('DATABASE_URL');
-    process.env.DATABASE_URL = databaseUrl;
-
-    // Force the Prisma proxy to create a new client instance targeting the container
-    prisma.$reconnect();
-  });
-
   beforeEach(async () => {
     // Truncate all tables using actual PostgreSQL table names (@@map values)
     // to ensure complete data isolation between individual tests

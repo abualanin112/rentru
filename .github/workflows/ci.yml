@@ -26,6 +26,9 @@ jobs:
           npx prisma validate
           npx prisma generate
 
+      - name: Run Prettier Check
+        run: npm run prettier
+
       - name: Run Lint
         run: npm run lint
 

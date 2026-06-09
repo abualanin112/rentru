@@ -13,7 +13,8 @@ if (config.env === 'test') {
   logLevel = 'debug';
 }
 
-export const baseLogger = pino({
+// 1. تعريف الإعدادات الأساسية المشتركة في كائن
+const pinoOptions = {
   level: logLevel,
   formatters: {
     level: (label) => ({ level: label }), // Map standard text levels (e.g., 'info') instead of numeric values
@@ -46,14 +47,29 @@ export const baseLogger = pino({
     pid: process.pid,
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-});
+};
+
+// 2. حقن pino-pretty فقط إذا كنا في بيئة التطوير
+if (config.env === 'development') {
+  pinoOptions.transport = {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname,env',
+      messageFormat: '{msg}',
+    },
+  };
+}
+
+// 3. تمرير الإعدادات المجمعة لإنشاء النسخة الأساسية
+export const baseLogger = pino(pinoOptions);
 
 /**
  * Contextual Logger Proxy
  * Intercepts logging calls and checks if there is a child logger in the ALS context.
- * If true (i.e. within an HTTP request), it automatically injects \
-eqId\ and \userId\.
- * If false (i.e. background job), it falls back to the global \aseLogger\.
+ * If true (i.e. within an HTTP request), it automatically injects `reqId` and `userId`.
+ * If false (i.e. background job), it falls back to the global `baseLogger`.
  */
 const logger = {
   info: (...args) => (asyncLocalStorage.getStore()?.logger || baseLogger).info(...args),

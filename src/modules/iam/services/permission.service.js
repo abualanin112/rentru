@@ -1,5 +1,5 @@
 import { prisma } from '../../../infrastructure/prisma.js';
-import { cacheGet, cacheSet, cacheDel, cacheIncr } from '../../../infrastructure/redis.js';
+import { cacheGet, cacheSet, cacheDel, cacheIncr } from '../../../infrastructure/cache.js';
 import { logger } from '../../../infrastructure/logger.js';
 
 // ──────────────────────────────────────────────────────────────

@@ -98,7 +98,7 @@ Currently, system abuse is constrained by standard Rate Limiters. To preserve fu
 
 - IP throttling / temporary IP lockouts.
 - Progressive Account lockouts (e.g. 5 failed attempts = 15m lock).
-- Integration of a Redis-backed Distributed Rate Limiter for horizontally scaled pods.
+- Integration of a Distributed Rate Limiter for horizontally scaled pods.
 
 ---
 

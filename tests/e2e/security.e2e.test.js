@@ -1,21 +1,12 @@
-import request from 'supertest';
-import httpStatus from 'http-status';
-
-import { app } from '../../src/app.js';
 import setupTestDB from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
-import { resetRedisClient, getRedisClient } from '../../src/infrastructure/redis.js';
+
 import * as authorizationService from '../../src/modules/iam/services/authorization.service.js';
 import { userOne, userTwo, insertUsers } from '../fixtures/user.fixture.js';
-import { userOneAccessToken } from '../fixtures/token.fixture.js';
 
 setupTestDB();
 
 describe('Security Regression & Hardening', () => {
-  beforeEach(() => {
-    resetRedisClient();
-  });
-
   describe('RBAC Bypasses & Escalation', () => {
     test('should prevent vertical privilege escalation when assigning roles', async () => {
       // userTwo will be our level 50 admin
@@ -61,35 +52,6 @@ describe('Security Regression & Hardening', () => {
       const result = await assignRoleToUser({ id: userTwo.id }, userOne.id, userRole.id);
       expect(result).toBeDefined();
       expect(result.roleId).toBe(userRole.id);
-    });
-  });
-
-  describe('Infrastructure Degradation', () => {
-    test('should gracefully degrade to memory cache when Redis exhausts retries', async () => {
-      await insertUsers([userOne]);
-
-      // We will mock the getClient function directly instead of createClient
-      // because we just want to force a Redis failure scenario
-
-      // Simulate redisClient being created but failing and nullifying itself
-      resetRedisClient();
-
-      // Simulate the getClient behavior when Redis is unreachable and retries exhaust
-      vi.spyOn({ getRedisClient }, 'getRedisClient').mockImplementation(async () => {
-        // Return null to signify Redis is unavailable
-        return null;
-      });
-
-      // Now, even with Redis "down", the auth middleware should still work
-      // because it falls back to memory cache
-      const res = await request(app).get('/v1/users').set('Authorization', `Bearer ${userOneAccessToken}`).send();
-
-      // The user lacks permissions, so we expect 403, NOT a 500 error from Redis crash
-      expect(res.status).toBe(httpStatus.FORBIDDEN);
-      expect(res.body.error.message).toBe('Forbidden');
-
-      // Restore
-      vi.restoreAllMocks();
     });
   });
 });

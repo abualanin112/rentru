@@ -49,16 +49,29 @@ export async function setup(project) {
   // Push the Prisma schema against the global container using db push
   // during Phase 2 to ensure the new RBAC tables are created despite missing migrations.
   console.log('[Global Setup] Syncing Prisma schema to container...');
+  console.log(`[Global Setup - Diagnostic] Target DATABASE_URL for Prisma CLI: ${databaseUrl.replace(/:test@/, ':***@')}`);
 
-  execSync('npx prisma validate', {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-  });
+  const fs = await import('fs');
+  const path = await import('path');
+  const envPath = path.resolve(process.cwd(), '.env');
+  const envBakPath = path.resolve(process.cwd(), '.env.bak');
 
-  execSync('npx prisma db push --accept-data-loss --skip-generate', {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-  });
+  let envRenamed = false;
+  if (fs.existsSync(envPath)) {
+    fs.renameSync(envPath, envBakPath);
+    envRenamed = true;
+  }
+
+  try {
+    execSync('npx prisma migrate deploy', {
+      stdio: 'inherit',
+      env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
+    });
+  } finally {
+    if (envRenamed) {
+      fs.renameSync(envBakPath, envPath);
+    }
+  }
 
   console.log('[Global Setup] Migration deploy complete.');
 

@@ -15,7 +15,7 @@ This project is a Pragmatic Node.js Modular Monolith.
 ```txt
 src/
 ├── modules/           # Business domains (e.g. iam, notes)
-├── infrastructure/    # Concrete tech implementations (prisma, redis)
+├── infrastructure/    # Concrete tech implementations (prisma, cache)
 ├── middleware/        # Global Express middlewares
 ├── shared/            # Stateless pure utilities and constants
 └── index.js           # Entrypoint
@@ -31,10 +31,11 @@ Modules encapsulate a business domain.
 
 ## 3. Infrastructure Boundaries
 
-Infrastructure concerns (Prisma, Redis, Mailers, Queues) belong strictly in `src/infrastructure/`.
+Infrastructure concerns (Prisma, Mailers, Queues) belong strictly in `src/infrastructure/`.
 
 - Do NOT place infrastructure in `shared/`.
-- Infrastructure components should be simple flat files (`prisma.js`, `redis.js`) rather than deeply nested folders unless absolutely required.
+- Modules MUST NOT depend on each other's infrastructure implementations.
+- Infrastructure components should be simple flat files (`prisma.js`, `cache.js`) rather than deeply nested folders unless absolutely required.
 
 ## 4. Shared Layer
 

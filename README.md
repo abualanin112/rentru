@@ -139,21 +139,51 @@ This project enforces a strict unidirectional flow to ensure complete decoupled 
 
 ```text
 src/
-├── bin/            # Custom CLI tools and initializers
-├── config/         # System configurations (Environment, ALS, Logger, Passport)
-├── controllers/    # API Controllers (request mapping & response orchestration)
-├── docs/           # Swagger / OpenAPI specification configs
-├── middlewares/    # Custom middlewares (auth rules, error formatters, rate limiters)
-├── repositories/   # DB data access layer wrapping Prisma operations
-├── routes/         # Router declarations grouped by API version
-├── serializers/    # Output formatters (sanitizing DB records before response)
-├── services/       # Core business logic services and transaction handling
-├── utils/          # Universal helpers (error classes, pagination, crypto)
-├── validations/    # Decoupled request payload validations using Zod
-├── workers/        # Background cron jobs and queue workers
-├── app.js          # Express application initialization & middleware stack
-└── index.js        # Server entry point, signal listeners, & process bootstrap
+├── app.js                          # Express app, middleware stack, health probes
+├── index.js                        # Server bootstrap, lifecycle, graceful shutdown
+├── docs/                           # Swagger / OpenAPI spec configs
+├── infrastructure/                 # Cross-cutting infrastructure
+│   ├── als.js                      # AsyncLocalStorage instance
+│   ├── cache.js                    # LRU-cache wrapper
+│   ├── config.js                   # Zod-validated environment config
+│   ├── logger.js                   # Pino structured logger with ALS proxy
+│   ├── mailer.js                   # Nodemailer transport
+│   ├── metrics.js                  # In-process counters + periodic flush
+│   ├── passport.js                 # JWT strategy
+│   ├── prisma.js                   # Prisma singleton proxy + telemetry
+│   └── workers/                    # Background cron jobs
+├── middleware/                     # Transport-layer middleware
+│   ├── auth.middleware.js          # JWT auth + RBAC gate
+│   ├── error.middleware.js         # Error converter + handler
+│   ├── pino-http.middleware.js     # Request logging
+│   ├── rate-limiter.middleware.js  # Three-tier rate limiting
+│   ├── response-interceptor.middleware.js  # Response envelope
+│   └── validate.middleware.js      # Zod validation
+├── modules/                        # Business domain modules
+│   ├── router.js                   # Composition root
+│   ├── iam/                        # Auth, users, RBAC, tokens
+│   ├── notes/                      # Notes CRUD
+│   └── audit/                      # Event audit logging
+└── shared/                         # Stateless utilities
+    ├── ApiError.js, CatchAsync.js
+    ├── Paginate.js, PaginateCursor.js
+    ├── Password.js, Pick.js, Tokens.js
+    └── CustomValidator.js
 ```
+
+### Documentation
+
+Detailed project documentation lives in `docs/`:
+
+| Document                                      | Purpose                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------- |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)       | System architecture, module boundaries, request lifecycle, auth/RBAC flow |
+| [PROJECT_RULES.md](docs/PROJECT_RULES.md)     | Enforced coding conventions and architecture constraints                  |
+| [BUSINESS_RULES.md](docs/BUSINESS_RULES.md)   | Business logic constraints, state transitions, permissions                |
+| [DECISIONS_LOG.md](docs/DECISIONS_LOG.md)     | Architectural decisions with rationale and tradeoffs                      |
+| [API_CONVENTIONS.md](docs/API_CONVENTIONS.md) | Response envelope, rate limits, status codes                              |
+| [DATA_STRATEGY.md](docs/DATA_STRATEGY.md)     | Database patterns, schema summary, deletion strategy                      |
+| [tasks/backlog.md](docs/tasks/backlog.md)     | Prioritized future work and technical debt                                |
 
 ---
 

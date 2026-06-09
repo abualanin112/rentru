@@ -20,5 +20,5 @@ The IAM module handles all user authentication, authorization, registration, and
 
 ## Dependencies
 
-- **Infrastructure:** `prisma.js`, `redis.js` (for rate limiting/token blacklists), `mailer.js`
+- **Infrastructure:** `prisma.js`, `cache.js` (for RBAC caching), `mailer.js`
 - **Shared:** `Tokens.js`, `Password.js`, `CatchAsync.js`, `CustomValidator.js`, `ApiError.js`

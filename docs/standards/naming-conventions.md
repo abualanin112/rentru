@@ -49,8 +49,8 @@ Use `feature.type.js`.
 ### 9. Infrastructure
 
 **Use:** Simple runtime-oriented names without suffixes.
-**Good:** `prisma.js`, `redis.js`, `logger.js`, `mailer.js`
-**Avoid:** `redis.service.js`, `prisma.client.js`
+**Good:** `prisma.js`, `logger.js`, `mailer.js`
+**Avoid:** `prisma.client.js`
 
 ### 10. Tests
 

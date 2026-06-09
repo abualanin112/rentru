@@ -15,7 +15,7 @@
     "node": ">=18.18.0"
   },
   "scripts": {
-    "start": "pm2 start ecosystem.config.json --no-daemon",
+    "start": "node src/index.js",
     "dev": "cross-env NODE_ENV=development nodemon src/index.js",
     "migrate": "node scripts/migrate.js",
     "test": "vitest",
@@ -64,7 +64,6 @@
     "integration-testing",
     "eslint",
     "prettier",
-    "pm2",
     "swagger",
     "openapi",
     "node-express",
@@ -89,8 +88,6 @@
     "passport-jwt": "^4.0.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
-    "pm2": "^5.4.3",
-    "redis": "^5.12.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"

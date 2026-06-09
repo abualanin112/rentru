@@ -24,15 +24,9 @@ const create = async (userBody, tx = prisma) => {
  * @returns {Promise<Object|null>}
  */
 const findById = async (id, options = {}, tx = prisma) => {
-  let select;
-  let client = tx;
-  if (options && typeof options.findUnique === 'function') {
-    client = options;
-  } else if (options && options.select) {
-    select = options.select;
-  }
+  const { select } = options;
 
-  return client.user.findUnique({
+  return tx.user.findUnique({
     where: { id },
     ...(select && { select }),
   });
@@ -46,7 +40,8 @@ const findById = async (id, options = {}, tx = prisma) => {
  * @param {Object} [tx=prisma] - Optional Prisma transaction client
  * @returns {Promise<Object|null>}
  */
-const findByEmail = async (email, { includePassword = false } = {}, tx = prisma) => {
+const findByEmail = async (email, options = {}, tx = prisma) => {
+  const { includePassword = false } = options;
   return tx.user.findUnique({
     where: { email },
     omit: { password: !includePassword },

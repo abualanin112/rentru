@@ -1,10 +1,6 @@
 import { logger } from './logger.js';
 
 export const metrics = {
-  redis: {
-    reconnects: 0,
-    degradedModeTransitions: 0,
-  },
   cache: {
     hits: 0,
     misses: 0,
@@ -42,8 +38,6 @@ export const startMetricsFlusher = (intervalMs = 60000) => {
     logger.info(
       {
         event: 'system.metrics',
-        redisReconnects: metrics.redis.reconnects,
-        degradedCount: metrics.redis.degradedModeTransitions,
         cacheHitRatio: parseFloat(getCacheHitRatio()),
         activeWorkers: metrics.workers.active,
         avgWorkerDurationMs: getAverageWorkerDurationMs(),
