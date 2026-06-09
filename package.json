@@ -115,6 +115,9 @@
     "testcontainers": "^11.14.0",
     "vitest": "^4.1.6"
   },
+  "overrides": {
+    "magicast": "^0.5.3"
+  },
   "commitlint": {
     "extends": [
       "@commitlint/config-conventional"
