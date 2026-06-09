@@ -80,10 +80,10 @@ EMAIL_FROM="support@rentru.com"
 
 ### 4. Database Setup (Docker)
 
-Spin up the local PostgreSQL database using the pre-configured Docker Compose file:
+Spin up a local PostgreSQL database container:
 
 ```bash
-npm run docker:dev
+docker run --name notes-postgres -e POSTGRES_DB=notes_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16-alpine
 ```
 
 Synchronize the Prisma schema and apply database schema push directly:
@@ -208,13 +208,11 @@ The following npm scripts are available:
 | `npm run prisma:generate` | Generates Prisma Client artifacts.                                     |
 | `npm run prisma:push`     | Synchronizes Prisma schema with database without applying migrations.  |
 | `npm run prisma:studio`   | Launches Prisma Studio database explorer at `http://localhost:5555`.   |
-| `npm run docker:dev`      | Boots local PostgreSQL and Adminer stack in the background.            |
-| `npm run docker:prod`     | Launches a fully production-optimized containerized app.               |
-| `npm run docker:test`     | Spins up the database container ready for test runners.                |
-| `npm run lint`            | Validates codebase code style and quality rules using ESLint.          |
-| `npm run lint:fix`        | Automatically resolves auto-fixable ESLint rules.                      |
-| `npm run prettier`        | Validates formatting using Prettier.                                   |
-| `npm run prettier:fix`    | Auto-formats the codebase with Prettier rules.                         |
+
+| `npm run lint` | Validates codebase code style and quality rules using ESLint. |
+| `npm run lint:fix` | Automatically resolves auto-fixable ESLint rules. |
+| `npm run prettier` | Validates formatting using Prettier. |
+| `npm run prettier:fix` | Auto-formats the codebase with Prettier rules. |
 
 ---
 

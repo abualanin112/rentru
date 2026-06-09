@@ -9,7 +9,7 @@ Strict, actionable engineering rules enforced across the codebase. Every rule is
 - **ESM only** — `"type": "module"` in `package.json`. No CommonJS.
 - **Named exports only** — `export const`, `export function`, `export class`. Never `export default`.
 - **Explicit `.js` extensions** — all local imports must include `.js`. Enforced by `import-x/extensions`.
-- **`node:` protocol** for built-in modules is the target standard (migration pending from current bare imports).
+- **`node:` protocol** for built-in modules is the target standard and is fully enforced across all files (e.g., `import crypto from 'node:crypto'`).
 
 ## Module Boundaries
 
@@ -181,3 +181,4 @@ Global Express middleware in `src/middleware/`:
 
 - Initial creation from codebase analysis, AGENTS.md, and existing standards docs
 - Documented all enforced conventions with implementation evidence
+- Updated standard built-in import rule to confirm full migration to `node:` prefix
