@@ -25,5 +25,10 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'clover', 'html'],
       exclude: ['node_modules', 'src/config', 'src/app.js', 'tests'],
     },
+    server: {
+      deps: {
+        inline: ['@prisma/client'],
+      },
+    },
   },
 });

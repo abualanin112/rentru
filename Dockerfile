@@ -7,7 +7,7 @@ WORKDIR /usr/src/node-app
 COPY package.json package-lock.json ./
 
 # Install ONLY production dependencies (no devDependencies like Vitest or ESLint)
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm install --omit=dev --ignore-scripts
 
 
 # ─── Stage 2: Builder ─────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
 # Install ALL dependencies (including Prisma CLI for generation)
-RUN npm ci
+RUN npm install
 
 # Copy full application source
 COPY . .
@@ -60,8 +60,5 @@ RUN chown -R node:node /usr/src/node-app
 USER node
 
 EXPOSE 3000
-
-# Note: Docker HEALTHCHECK is intentionally omitted. 
-# Render manages health checks natively via HTTP probes on the dynamically assigned PORT.
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
