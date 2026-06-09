@@ -218,6 +218,18 @@ The following npm scripts are available:
 
 ---
 
+## ☁️ Render Deployment Guide
+
+When deploying this application as a **Docker Web Service** on Render, configure the following settings in your Render dashboard:
+
+- **Build Command**: (Leave blank, Render builds the Dockerfile)
+- **Start Command**: (Leave blank, uses `CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]` from Dockerfile)
+- **Health Check Path**: `/ready`
+
+_Note: Database migrations run automatically during container startup, which is safe for Render Free deployments where horizontal scaling isn't applied._
+
+---
+
 ## 🔐 Security & Reliability Standard
 
 - **Dynamic Token Revocation**: Secure JWT lifecycle management. When a refresh token is leaked or reused, the token family tracking invalidates all active tokens associated with that user session.

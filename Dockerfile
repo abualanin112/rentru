@@ -7,7 +7,7 @@ WORKDIR /usr/src/node-app
 COPY package.json package-lock.json ./
 
 # Install ONLY production dependencies (no devDependencies like Vitest or ESLint)
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 
 # ─── Stage 2: Builder ─────────────────────────────────────────────────────────
@@ -46,8 +46,14 @@ COPY --from=deps /usr/src/node-app/node_modules ./node_modules
 COPY --from=builder /usr/src/node-app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /usr/src/node-app/node_modules/@prisma/client ./node_modules/@prisma/client
 
+# Copy Prisma schema and migrations (Required for deployments and runtime)
+COPY --from=builder /usr/src/node-app/prisma ./prisma
+
 # Copy application source
 COPY src ./src
+
+# Install Prisma CLI globally for production runner (Required for migrate deploy)
+RUN npm install -g prisma@^6.19.3
 
 # Secure ownership
 RUN chown -R node:node /usr/src/node-app
@@ -55,7 +61,7 @@ USER node
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["node", "-e", "fetch('http://localhost:3000/ready').then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"]
+# Note: Docker HEALTHCHECK is intentionally omitted. 
+# Render manages health checks natively via HTTP probes on the dynamically assigned PORT.
 
-  CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
