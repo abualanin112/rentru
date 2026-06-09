@@ -6,6 +6,7 @@ import { startMetricsFlusher } from './infrastructure/metrics.js';
 import { logger } from './infrastructure/logger.js';
 import { prisma } from './infrastructure/prisma.js';
 import { startTokenCleanupJob } from './infrastructure/workers/token-cleanup.worker.js';
+import { verifySmtpConnection } from './infrastructure/email/index.js';
 
 let server;
 
@@ -36,6 +37,10 @@ const bootstrap = async () => {
     logger.info('Asserting PostgreSQL database connectivity...');
     await prisma.$queryRaw`SELECT 1`;
     logger.info('Successfully connected to PostgreSQL');
+
+    // 2. Assert SMTP availability
+    logger.info('Asserting SMTP connection...');
+    await verifySmtpConnection();
 
     // 3. Open HTTP Listener
     server = app.listen(config.port, () => {

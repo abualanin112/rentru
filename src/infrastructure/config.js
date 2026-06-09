@@ -34,11 +34,11 @@ const envVarsSchema = z
       .number()
       .default(10)
       .describe('minutes after which verify email token expires'),
-    SMTP_HOST: z.string().optional().describe('server that will send the emails'),
-    SMTP_PORT: z.coerce.number().optional().describe('port to connect to the email server'),
-    SMTP_USERNAME: z.string().optional().describe('username for email server'),
-    SMTP_PASSWORD: z.string().optional().describe('password for email server'),
-    EMAIL_FROM: z.string().optional().describe('the from field in the emails sent by the app'),
+    SMTP_HOST: z.string().min(1).describe('server that will send the emails'),
+    SMTP_PORT: z.coerce.number().describe('port to connect to the email server'),
+    SMTP_USERNAME: z.string().min(1).describe('username for email server'),
+    SMTP_PASSWORD: z.string().min(1).describe('password for email server'),
+    EMAIL_FROM: z.string().email().describe('the from field in the emails sent by the app'),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().default(500).describe('Threshold in ms to log slow Prisma queries'),
     EVENT_LOOP_LAG_THRESHOLD_MS: z.coerce.number().default(100).describe('Threshold in ms to alert on event loop lag'),
   })

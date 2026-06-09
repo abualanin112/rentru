@@ -37,7 +37,7 @@ graph LR
         ALS["als"]
         CONFIG["config"]
         METRICS["metrics"]
-        MAILER["mailer"]
+        EMAIL["email"]
         PASSPORT["passport"]
         WORKERS["workers"]
     end
@@ -87,7 +87,11 @@ src/
 │   ├── cache.js                    # LRU-cache wrapper (in-memory)
 │   ├── config.js                   # Zod-validated env config
 │   ├── logger.js                   # Pino logger with ALS proxy
-│   ├── mailer.js                   # Nodemailer transport
+│   ├── email/                      # Email infrastructure capability
+│   │   ├── index.js                # Barrel exposing emailService
+│   │   ├── mailer.js               # Nodemailer transporter and SMTP connection verification
+│   │   ├── email.service.js        # Domain-agnostic send capabilities with HTML templates
+│   │   └── templates/              # Plain JS functions returning HTML strings
 │   ├── metrics.js                  # In-process counters + periodic flush
 │   ├── passport.js                 # JWT strategy
 │   ├── prisma.js                   # Prisma singleton proxy + slow query telemetry
@@ -245,6 +249,20 @@ User → UserRole (many-to-many) → Role → RolePermission (many-to-many) → 
 - Deletes expired and blacklisted tokens older than threshold.
 - Controlled by `ENABLE_BACKGROUND_WORKERS` env var — can be disabled per node.
 - Registered in `global.activeWorkers` for graceful shutdown await.
+
+---
+
+## Email Infrastructure
+
+The project uses a dedicated Email Infrastructure subsystem located at `src/infrastructure/email`.
+
+- **Domain-Driven Design Strictness**: Email is treated as a technical delivery mechanism (I/O side effect), completely decoupled from business domains.
+- **Layered Flow**:
+  - **Controllers** orchestrate HTTP and never interact with the email system directly.
+  - **Domain Services** (e.g., `iam/services/auth.service.js`) generate required tokens and orchestrate the dispatch by calling the `emailService`.
+  - **Infrastructure** (`infrastructure/email/email.service.js`) handles template rendering, error swallowing (to prevent application crashes on SMTP failure), and Pino logging without throwing HTTP-specific errors (`ApiError`).
+- **Transporter Isolation**: Raw SMTP socket logic and `verifySmtpConnection()` are kept inside `mailer.js`, separated from template generation.
+- **Fail Fast Configuration**: SMTP credentials are required in `config.js` and connection is asserted via `verifySmtpConnection()` at application bootstrap.
 
 ---
 

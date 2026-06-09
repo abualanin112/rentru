@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../../shared/CatchAsync.js';
-import { authService, userService, tokenService, emailService } from '../services/index.js';
+import { authService, userService, tokenService } from '../services/index.js';
 import { serializeUser } from '../user.serializer.js';
 
 const register = catchAsync(async (req, res, next) => {
@@ -33,10 +33,7 @@ const refreshTokens = catchAsync(async (req, res, next) => {
 });
 
 const forgotPassword = catchAsync(async (req, res, next) => {
-  const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
-  if (resetPasswordToken) {
-    await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
-  }
+  await authService.forgotPassword(req.body.email);
   res.locals.statusCode = httpStatus.NO_CONTENT;
   res.locals.payload = null;
   next();
@@ -50,8 +47,7 @@ const resetPassword = catchAsync(async (req, res, next) => {
 });
 
 const sendVerificationEmail = catchAsync(async (req, res, next) => {
-  const verifyEmailToken = await tokenService.generateVerifyEmailToken(req.user);
-  await emailService.sendVerificationEmail(req.user.email, verifyEmailToken);
+  await authService.sendVerificationEmail(req.user);
   res.locals.statusCode = httpStatus.NO_CONTENT;
   res.locals.payload = null;
   next();

@@ -69,6 +69,13 @@ Ensure the database connection URL in `.env` points to your target PostgreSQL da
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/notes_db?schema=public"
 JWT_SECRET="your-super-secure-jwt-secret-key"
+
+# Required SMTP Email Configuration
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=465
+SMTP_USERNAME="your-gmail@gmail.com"
+SMTP_PASSWORD="your-app-password"
+EMAIL_FROM="support@rentru.com"
 ```
 
 ### 4. Database Setup (Docker)

@@ -10,7 +10,7 @@ import { tokenTypes } from '../../src/shared/Tokens.js';
 import { ApiError } from '../../src/shared/ApiError.js';
 import { auth } from '../../src/middleware/auth.middleware.js';
 import * as tokenService from '../../src/modules/iam/services/token.service.js';
-import * as emailService from '../../src/modules/iam/services/email.service.js';
+import { emailService } from '../../src/infrastructure/email/index.js';
 import { setupTestDB } from '../utils/setupTestDB.js';
 import { prisma } from '../../src/infrastructure/prisma.js';
 
@@ -187,17 +187,17 @@ describe('Auth routes', () => {
 
   describe('POST /v1/auth/forgot-password', () => {
     beforeEach(() => {
-      vi.spyOn(emailService.transport, 'sendMail').mockResolvedValue();
+      vi.spyOn(emailService, 'sendPasswordResetEmail').mockResolvedValue(true);
     });
 
     test('should return 204 and send reset password email to the user', async () => {
       await insertUsers([userOne]);
-      const sendResetPasswordEmailSpy = vi.spyOn(emailService, 'sendResetPasswordEmail');
+      const sendPasswordResetEmailSpy = vi.spyOn(emailService, 'sendPasswordResetEmail');
 
       await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NO_CONTENT);
 
-      expect(sendResetPasswordEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
-      const resetPasswordToken = sendResetPasswordEmailSpy.mock.calls[0][1];
+      expect(sendPasswordResetEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
+      const resetPasswordToken = sendPasswordResetEmailSpy.mock.calls[0][1];
       const dbResetPasswordTokenDoc = await prisma.token.findFirst({
         where: { token: resetPasswordToken, userId: userOne.id },
       });
@@ -313,7 +313,7 @@ describe('Auth routes', () => {
 
   describe('POST /v1/auth/send-verification-email', () => {
     beforeEach(() => {
-      vi.spyOn(emailService.transport, 'sendMail').mockResolvedValue();
+      vi.spyOn(emailService, 'sendVerificationEmail').mockResolvedValue(true);
     });
 
     test('should return 204 and send verification email to the user', async () => {

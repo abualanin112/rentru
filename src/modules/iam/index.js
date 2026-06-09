@@ -6,7 +6,6 @@ export * as authorizationService from './services/authorization.service.js';
 export * as permissionService from './services/permission.service.js';
 export * as tokenService from './services/token.service.js';
 export * as userService from './services/user.service.js';
-export * as emailService from './services/email.service.js';
 
 /**
  * Register IAM Module Routes

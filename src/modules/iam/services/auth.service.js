@@ -1,6 +1,7 @@
 import httpStatus from 'http-status';
 import crypto from 'node:crypto';
-import { verifyToken, generateAuthTokens } from './token.service.js';
+import { verifyToken, generateAuthTokens, generateResetPasswordToken, generateVerifyEmailToken } from './token.service.js';
+import { emailService } from '../../../infrastructure/email/index.js';
 import { findByEmail, findById as findUserById, updateById as updateUserById } from '../repositories/user.repository.js';
 import {
   findOne as findTokenRecord,
@@ -194,4 +195,36 @@ const verifyEmail = async (verifyEmailToken) => {
   }
 };
 
-export { loginUserWithEmailAndPassword, logout, refreshAuth, resetPassword, verifyEmail };
+/**
+ * Forgot password - generates token and sends email
+ * @param {string} email
+ * @returns {Promise<void>}
+ */
+const forgotPassword = async (email) => {
+  const resetPasswordToken = await generateResetPasswordToken(email);
+  if (resetPasswordToken) {
+    await emailService.sendPasswordResetEmail(email, resetPasswordToken);
+  }
+};
+
+/**
+ * Send verification email
+ * @param {Object} user
+ * @returns {Promise<void>}
+ */
+const sendVerificationEmailUser = async (user) => {
+  const verifyEmailToken = await generateVerifyEmailToken(user);
+  if (verifyEmailToken) {
+    await emailService.sendVerificationEmail(user.email, verifyEmailToken);
+  }
+};
+
+export {
+  loginUserWithEmailAndPassword,
+  logout,
+  refreshAuth,
+  resetPassword,
+  verifyEmail,
+  forgotPassword,
+  sendVerificationEmailUser as sendVerificationEmail,
+};
