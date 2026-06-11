@@ -41,6 +41,9 @@ const envVarsSchema = z
     EMAIL_FROM: z.string().email().describe('the from field in the emails sent by the app'),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().default(500).describe('Threshold in ms to log slow Prisma queries'),
     EVENT_LOOP_LAG_THRESHOLD_MS: z.coerce.number().default(100).describe('Threshold in ms to alert on event loop lag'),
+    GOOGLE_CLIENT_ID: z.string().min(1).describe('Google OAuth Client ID'),
+    GOOGLE_CLIENT_SECRET: z.string().min(1).describe('Google OAuth Client Secret'),
+    GOOGLE_CALLBACK_URL: z.string().url().describe('Google OAuth Callback URL'),
   })
   .passthrough();
 
@@ -86,6 +89,13 @@ const config = {
   },
   telemetry: {
     eventLoopLagThresholdMs: envVars.EVENT_LOOP_LAG_THRESHOLD_MS,
+  },
+  oauth: {
+    google: {
+      clientId: envVars.GOOGLE_CLIENT_ID,
+      clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+      callbackUrl: envVars.GOOGLE_CALLBACK_URL,
+    },
   },
 };
 

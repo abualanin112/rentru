@@ -1,103 +1,95 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import { logger } from '../src/infrastructure/logger.js';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  logger.info('Starting RBAC Bootstrap...');
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
 
-  await prisma.$transaction(async (tx) => {
-    // 1. Create the global wildcard permission
-    const wildcardPermission = await tx.permission.upsert({
-      where: {
-        action_resource_scope: {
-          action: '*',
-          resource: '*',
-          scope: '*',
+  if (!superAdminEmail) {
+    console.error('FATAL ERROR: SUPER_ADMIN_EMAIL environment variable is not defined.');
+    process.exit(1);
+  }
+
+  const normalizedEmail = superAdminEmail.toLowerCase();
+
+  // 1. Create Super Admin Role
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'super_admin' },
+    update: {},
+    create: {
+      name: 'super_admin',
+      description: 'System Super Administrator',
+      level: 100,
+      isSystem: true,
+      version: 1,
+      permissions: {
+        create: [
+          {
+            permission: {
+              connectOrCreate: {
+                where: {
+                  action_subject_scope: {
+                    action: '*',
+                    subject: '*',
+                    scope: '*',
+                  },
+                },
+                create: {
+                  action: '*',
+                  subject: '*',
+                  scope: '*',
+                  group: 'System',
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  // 2. Create Super Admin User (Without googleId, waiting for first SSO login)
+  let superAdminUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (!superAdminUser) {
+    superAdminUser = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        firstName: 'System',
+        lastName: 'Admin',
+        isActive: true,
+        roles: {
+          create: {
+            roleId: superAdminRole.id,
+            assignedBy: 'system-seed',
+          },
         },
       },
-      update: {},
-      create: {
-        action: '*',
-        resource: '*',
-        scope: '*',
-        description: 'Global Wildcard - Grants all permissions across the system.',
-      },
     });
-    logger.info(`Wildcard permission ensured: ${wildcardPermission.id}`);
+    console.log(`Super Admin user created successfully with email: ${normalizedEmail}`);
+  } else {
+    console.log(`Super Admin user already exists with email: ${normalizedEmail}`);
+  }
 
-    // 2. Create the super_admin role (Level 100)
-    const superAdminRole = await tx.role.upsert({
-      where: { name: 'super_admin' },
-      update: {},
-      create: {
-        name: 'super_admin',
-        description: 'System Administrator with unrestricted access.',
-        level: 100,
-        isSystem: true,
-      },
-    });
-    logger.info(`Super admin role ensured: ${superAdminRole.id}`);
-
-    // 3. Link Wildcard Permission to Super Admin Role
-    await tx.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: superAdminRole.id,
-          permissionId: wildcardPermission.id,
-        },
-      },
-      update: {},
-      create: {
-        roleId: superAdminRole.id,
-        permissionId: wildcardPermission.id,
-      },
-    });
-    logger.info('RolePermission link established.');
-
-    // 4. Find or Create the Default Admin User
-    // Assuming a default admin email is provided via ENV or we find the first legacy 'admin'
-    let adminUser = await tx.user.findFirst({
-      where: { role: 'admin' },
-    });
-
-    if (!adminUser) {
-      logger.warn('No legacy admin user found. Creating a default admin user...');
-      const hashedPassword = await bcrypt.hash('ChangeMe123!', 10);
-      adminUser = await tx.user.create({
-        data: {
-          name: 'System Admin',
-          email: 'admin@system.local',
-          password: hashedPassword,
-          role: 'admin',
-          isEmailVerified: true,
-        },
-      });
-    }
-
-    // 5. Assign the super_admin role to the Admin User
-    await tx.userRole.upsert({
-      where: {
-        userId_roleId: {
-          userId: adminUser.id,
-          roleId: superAdminRole.id,
-        },
-      },
-      update: {},
-      create: {
-        userId: adminUser.id,
-        roleId: superAdminRole.id,
-        assignedBy: 'system-bootstrap',
-      },
-    });
-    logger.info(`Bootstrap complete! User ${adminUser.email} is now a super_admin.`);
+  // Also create a standard_user role for testing and basic functionality
+  await prisma.role.upsert({
+    where: { name: 'standard_user' },
+    update: {},
+    create: {
+      name: 'standard_user',
+      description: 'Standard System User',
+      level: 10,
+      isSystem: true,
+      version: 1,
+    },
   });
 }
 
 main()
   .catch((e) => {
-    logger.error({ err: e }, 'Bootstrap failed');
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

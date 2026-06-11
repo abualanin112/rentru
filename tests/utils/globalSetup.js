@@ -63,7 +63,7 @@ export async function setup(project) {
   }
 
   try {
-    execSync('npx prisma migrate deploy', {
+    execSync('npx prisma db push --accept-data-loss', {
       stdio: 'inherit',
       env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
     });

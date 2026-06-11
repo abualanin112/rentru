@@ -1,58 +1,52 @@
 import { z } from 'zod';
-import { cuid2Schema, password } from '../../../shared/CustomValidator.js';
-
-const createUser = z.object({
-  body: z.object({
-    email: z.string().email(),
-    name: z.string(),
-    role: z.string().optional(),
-    password: z.string().refine(password, {
-      message: 'password must be at least 8 characters and contain at least 1 letter and 1 number',
-    }),
-  }),
-});
 
 const getUsers = z.object({
   query: z.object({
-    name: z.string().optional(),
-    role: z.string().optional(),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(10),
     sortBy: z.string().optional(),
-    limit: z.coerce.number().int().optional(),
-    page: z.coerce.number().int().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().email().optional(),
+    branchId: z.string().uuid().optional(),
+    isActive: z
+      .string()
+      .transform((val) => val === 'true')
+      .optional(),
   }),
 });
 
 const getUser = z.object({
   params: z.object({
-    userId: cuid2Schema('userId'),
+    userId: z.string().uuid(),
   }),
 });
 
-// Compose updateUser using self-contained Zod definitions
-const updateUser = z.object({
+const updateStatus = z.object({
   params: z.object({
-    userId: cuid2Schema('userId'),
+    userId: z.string().uuid(),
   }),
-  body: z
-    .object({
-      email: z.string().email().optional(),
-      name: z.string().optional(),
-      password: z
-        .string()
-        .refine(password, {
-          message: 'password must be at least 8 characters and contain at least 1 letter and 1 number',
-        })
-        .optional(),
-    })
-    .refine((data) => Object.keys(data).length > 0, {
-      message: 'Must have at least one field to update',
-    }),
+  body: z.object({
+    isActive: z.boolean(),
+  }),
 });
 
-const deleteUser = z.object({
+const archiveUser = z.object({
   params: z.object({
-    userId: cuid2Schema('userId'),
+    userId: z.string().uuid(),
   }),
 });
 
-export { createUser, getUsers, getUser, updateUser, deleteUser };
+const restoreUser = z.object({
+  params: z.object({
+    userId: z.string().uuid(),
+  }),
+});
+
+export const userValidator = {
+  getUsers,
+  getUser,
+  updateStatus,
+  archiveUser,
+  restoreUser,
+};

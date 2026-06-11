@@ -10,7 +10,7 @@ const { version } = pkg;
 const swaggerDef = {
   openapi: '3.0.0',
   info: {
-    title: 'node-express-boilerplate API documentation',
+    title: 'Rentru ERP API Documentation',
     version,
     license: {
       name: 'MIT',

@@ -1,56 +1,26 @@
 import { z } from 'zod';
-import { password } from '../../../shared/CustomValidator.js';
 
-// Compose register using self-contained Zod definitions
-const register = z.object({
-  body: z.object({
-    email: z.string().email(),
-    name: z.string(),
-    password: z.string().refine(password, {
-      message: 'password must be at least 8 characters and contain at least 1 letter and 1 number',
+export const authValidation = {
+  // We use query parameter for deviceId on initial login
+  googleAuth: z.object({
+    query: z.object({
+      deviceId: z.string().min(1, 'Device ID is required').max(255),
+      inviteToken: z.string().optional(),
     }),
   }),
-});
 
-// Compose login using self-contained Zod definitions
-const login = z.object({
-  body: z.object({
-    email: z.string(),
-    password: z.string(),
-  }),
-});
-
-const logout = z.object({
-  body: z.object({
-    refreshToken: z.string(),
-  }),
-});
-
-const refreshTokens = z.object({
-  body: z.object({
-    refreshToken: z.string(),
-  }),
-});
-
-const forgotPassword = z.object({
-  body: z.object({
-    email: z.string().email(),
-  }),
-});
-
-const resetPassword = z.object({
-  body: z.object({
-    token: z.string(),
-    password: z.string().refine(password, {
-      message: 'password must be at least 8 characters and contain at least 1 letter and 1 number',
+  refreshToken: z.object({
+    body: z.object({
+      deviceId: z.string().min(1, 'Device ID is required').max(255),
+    }),
+    cookies: z.object({
+      refreshToken: z.string().min(1, 'Refresh token cookie is required'),
     }),
   }),
-});
 
-const verifyEmail = z.object({
-  body: z.object({
-    token: z.string(),
+  logout: z.object({
+    body: z.object({
+      deviceId: z.string().min(1, 'Device ID is required').max(255),
+    }),
   }),
-});
-
-export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail };
+};

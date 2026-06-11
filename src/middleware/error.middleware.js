@@ -10,8 +10,15 @@ const errorConverter = (err, req, res, next) => {
     // eslint-disable-next-line security/detect-object-injection
     let message = error.message || httpStatus[statusCode];
 
+    // Handle JWT specific errors
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
+      statusCode = httpStatus.UNAUTHORIZED;
+      message = 'Invalid or expired token';
+      error.name = 'UNAUTHORIZED';
+    }
+
     // Handle Prisma specific database request errors
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    else if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         statusCode = httpStatus.BAD_REQUEST;
         message = 'Resource already exists';

@@ -1,50 +1,34 @@
-import bcrypt from 'bcryptjs';
 import { faker } from '@faker-js/faker';
 import { prisma } from '../../src/infrastructure/prisma.js';
+import crypto from 'node:crypto';
 
-const password = 'password1';
-const salt = bcrypt.genSaltSync(8);
-const hashedPassword = bcrypt.hashSync(password, salt);
-
-/**
- * Generate a compliant 25-character CUID2 format string.
- * Returns a primitive string.
- */
-const createCuid2 = () => {
-  const letters = 'abcdefghijklmnopqrstuvwxyz';
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = letters.charAt(Math.floor(Math.random() * letters.length));
-  for (let i = 0; i < 24; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
+const createCuid2 = () => crypto.randomUUID();
 
 const userOne = {
   id: createCuid2(),
-  name: faker.person.fullName(),
+  firstName: faker.person.firstName(),
+  lastName: faker.person.lastName(),
   email: faker.internet.email().toLowerCase(),
-  password,
   roleName: 'standard_user',
-  isEmailVerified: false,
+  isActive: true,
 };
 
 const userTwo = {
   id: createCuid2(),
-  name: faker.person.fullName(),
+  firstName: faker.person.firstName(),
+  lastName: faker.person.lastName(),
   email: faker.internet.email().toLowerCase(),
-  password,
   roleName: 'standard_user',
-  isEmailVerified: false,
+  isActive: true,
 };
 
 const admin = {
   id: createCuid2(),
-  name: faker.person.fullName(),
+  firstName: faker.person.firstName(),
+  lastName: faker.person.lastName(),
   email: faker.internet.email().toLowerCase(),
-  password,
   roleName: 'super_admin',
-  isEmailVerified: false,
+  isActive: true,
 };
 
 const insertUsers = async (users) => {
@@ -53,11 +37,10 @@ const insertUsers = async (users) => {
   for (const user of users) {
     data.push({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
-      password: hashedPassword,
-      role: user.roleName === 'super_admin' ? 'admin' : 'user', // Kept for legacy fallback compatibility
-      isEmailVerified: user.isEmailVerified,
+      isActive: user.isActive,
       createdAt: new Date(time),
       updatedAt: new Date(time),
     });
@@ -73,9 +56,9 @@ const insertUsers = async (users) => {
 
     // 2. Ensure Wildcard & Super Admin Role
     const wildcard = await tx.permission.upsert({
-      where: { action_resource_scope: { action: '*', resource: '*', scope: '*' } },
+      where: { action_subject_scope: { action: '*', subject: '*', scope: '*' } },
       update: {},
-      create: { action: '*', resource: '*', scope: '*' },
+      create: { action: '*', subject: '*', scope: '*', group: 'System' },
     });
     const superAdminRole = await tx.role.upsert({
       where: { name: 'super_admin' },
@@ -96,20 +79,20 @@ const insertUsers = async (users) => {
     });
 
     const userPerms = [
-      { action: 'read', resource: 'notes', scope: 'own' },
-      { action: 'create', resource: 'notes', scope: 'own' },
-      { action: 'update', resource: 'notes', scope: 'own' },
-      { action: 'delete', resource: 'notes', scope: 'own' },
-      { action: 'read', resource: 'users', scope: 'own' },
-      { action: 'update', resource: 'users', scope: 'own' },
-      { action: 'delete', resource: 'users', scope: 'own' },
+      { action: 'read', subject: 'notes', scope: 'own', group: 'Operations' },
+      { action: 'create', subject: 'notes', scope: 'own', group: 'Operations' },
+      { action: 'update', subject: 'notes', scope: 'own', group: 'Operations' },
+      { action: 'delete', subject: 'notes', scope: 'own', group: 'Operations' },
+      { action: 'read', subject: 'users', scope: 'own', group: 'IAM' },
+      { action: 'update', subject: 'users', scope: 'own', group: 'IAM' },
+      { action: 'delete', subject: 'users', scope: 'own', group: 'IAM' },
     ];
 
     for (const p of userPerms) {
       const perm = await tx.permission.upsert({
-        where: { action_resource_scope: { action: p.action, resource: p.resource, scope: p.scope } },
+        where: { action_subject_scope: { action: p.action, subject: p.subject, scope: p.scope } },
         update: {},
-        create: { action: p.action, resource: p.resource, scope: p.scope },
+        create: { action: p.action, subject: p.subject, scope: p.scope, group: p.group },
       });
       await tx.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: standardRole.id, permissionId: perm.id } },

@@ -1,66 +1,44 @@
 import { z } from 'zod';
-import { cuid2Schema } from '../../../shared/CustomValidator.js';
 
-const createRole = z.object({
+export const createRoleSchema = z.object({
   body: z.object({
-    name: z.string().min(2).max(100),
-    description: z.string().optional(),
-    level: z.coerce.number().int().min(0).max(100),
-    permissions: z.array(cuid2Schema('permissionId')).optional(),
+    name: z.string().min(2).max(50),
+    description: z.string().max(500).optional(),
+    level: z.number().int().min(0).max(100).default(0),
   }),
 });
 
-const getRoles = z.object({
-  query: z.object({
-    name: z.string().optional(),
-    sortBy: z.string().optional(),
-    limit: z.coerce.number().int().optional(),
-    page: z.coerce.number().int().optional(),
-  }),
-});
-
-const getRole = z.object({
+export const updateRoleSchema = z.object({
   params: z.object({
-    roleId: cuid2Schema('roleId'),
-  }),
-});
-
-const updateRole = z.object({
-  params: z.object({
-    roleId: cuid2Schema('roleId'),
-  }),
-  body: z
-    .object({
-      name: z.string().min(2).max(100).optional(),
-      description: z.string().optional(),
-      level: z.coerce.number().int().min(0).max(100).optional(),
-      permissions: z.array(cuid2Schema('permissionId')).optional(),
-    })
-    .refine((data) => Object.keys(data).length > 0, {
-      message: 'Must have at least one field to update',
-    }),
-});
-
-const deleteRole = z.object({
-  params: z.object({
-    roleId: cuid2Schema('roleId'),
-  }),
-});
-
-const assignRole = z.object({
-  params: z.object({
-    userId: cuid2Schema('userId'),
+    roleId: z.string().uuid(),
   }),
   body: z.object({
-    roleId: cuid2Schema('roleId'),
+    name: z.string().min(2).max(50).optional(),
+    description: z.string().max(500).optional(),
+    level: z.number().int().min(0).max(100).optional(),
   }),
 });
 
-const removeRole = z.object({
+export const getRoleSchema = z.object({
   params: z.object({
-    userId: cuid2Schema('userId'),
-    roleId: cuid2Schema('roleId'),
+    roleId: z.string().uuid(),
   }),
 });
 
-export { createRole, getRoles, getRole, updateRole, deleteRole, assignRole, removeRole };
+export const reassignRoleSchema = z.object({
+  params: z.object({
+    roleId: z.string().uuid(), // The source role
+  }),
+  body: z.object({
+    targetRoleId: z.string().uuid(),
+  }),
+});
+
+export const updateRolePermissionsSchema = z.object({
+  params: z.object({
+    roleId: z.string().uuid(),
+  }),
+  body: z.object({
+    permissionIds: z.array(z.string().uuid()),
+  }),
+});

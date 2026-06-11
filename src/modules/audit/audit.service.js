@@ -46,14 +46,14 @@ const sanitizeMetadata = (obj, depth = 0, maxDepth = MAX_SERIALIZATION_DEPTH) =>
  * Log an audit event
  * @param {Object} payload
  * @param {string} payload.event - Canonical event taxonomy (e.g., 'notes.created')
- * @param {string} payload.entityType - Standardized PascalCase entity name (e.g., 'Note')
- * @param {string} payload.entityId - ID of the target entity
+ * @param {string} payload.targetType - Standardized PascalCase entity name (e.g., 'Note')
+ * @param {string} payload.targetId - ID of the target entity
  * @param {string} payload.action - Secondary classifier ('CREATE', 'UPDATE', 'DELETE', 'EXECUTE')
  * @param {Object} [payload.metadata] - Optional payload, will be strictly sanitized
  * @param {string} [payload.reason] - Optional context reason
  * @param {Object} [tx=null] - Prisma transaction client to ensure atomic persistence
  */
-const logEvent = async ({ event, entityType, entityId, action, metadata = null, reason = null }, tx) => {
+const logEvent = async ({ event, targetType, targetId, action, metadata = null, reason = null }, tx) => {
   try {
     const store = asyncLocalStorage.getStore();
     const actorId = store?.userId || null;
@@ -69,8 +69,8 @@ const logEvent = async ({ event, entityType, entityId, action, metadata = null, 
       event,
       reqId,
       actorId,
-      entityType,
-      entityId,
+      targetType,
+      targetId,
       action,
       // Deny-list for nested dynamic data inside metadata (treated as 'before' / 'after' depending on action context, or plain metadata)
       metadata: safeMetadata,

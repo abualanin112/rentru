@@ -28,12 +28,28 @@ const verifyCallback = (req, resolve, reject, requiredPermissions) => async (err
 
   req.user = user;
 
-  // Inject userId into observability context for downstream tracing
+  // Pre-load permissions to check for Super Admin status (for Silent Guardian)
+  let userPermissions;
+  try {
+    userPermissions = await getUserPermissions(user.id);
+    req.user.permissions = userPermissions;
+  } catch {
+    return reject(new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to resolve user permissions'));
+  }
+
+  // Inject userId and branchId into observability context and ALS for Silent Guardian
   const store = asyncLocalStorage.getStore();
   if (store) {
     store.userId = user.id;
+    store.branchId = user.branchId;
+    store.isSuperAdmin = userPermissions.has('*:*:*');
+
     if (store.logger) {
-      store.logger = store.logger.child({ userId: user.id });
+      store.logger = store.logger.child({
+        userId: user.id,
+        branchId: user.branchId,
+        isSuperAdmin: store.isSuperAdmin,
+      });
     }
   }
 
@@ -44,8 +60,6 @@ const verifyCallback = (req, resolve, reject, requiredPermissions) => async (err
   }
 
   try {
-    const userPermissions = await getUserPermissions(user.id);
-
     // ALL required permissions must be satisfied (AND logic)
     const hasAllRequired = requiredPermissions.every((perm) => matchesPermission(userPermissions, perm));
 

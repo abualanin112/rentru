@@ -1,63 +1,64 @@
 import httpStatus from 'http-status';
-import { pick } from '../../../shared/Pick.js';
-import { ApiError } from '../../../shared/ApiError.js';
 import { catchAsync } from '../../../shared/CatchAsync.js';
-import { logger } from '../../../infrastructure/logger.js';
-import { userService, authorizationService } from '../services/index.js';
-import { serializeUser } from '../user.serializer.js';
+import * as userService from '../services/user.service.js';
+import { serializeUser, serializeUsers } from '../user.serializer.js';
+import { pick } from '../../../shared/Pick.js';
 
-const createUser = catchAsync(async (req, res, next) => {
-  if (req.body.role !== undefined) {
-    logger.warn(
-      { event: 'legacy.role_field.ignored', role: req.body.role },
-      'Ignored deprecated role field in user payload',
-    );
-    delete req.body.role;
-  }
-  const user = await userService.createUser(req.body);
-  res.locals.statusCode = httpStatus.CREATED;
-  res.locals.payload = user;
-  res.locals.serializer = serializeUser;
-  next();
+const getMe = catchAsync(async (req, res) => {
+  const user = await userService.getMe(req.user.id);
+  res.status(httpStatus.OK).send(serializeUser(user));
 });
 
-const getUsers = catchAsync(async (req, res, next) => {
-  const filter = pick(req.query, ['name', 'role']);
+const getUsers = catchAsync(async (req, res) => {
+  const filter = pick(req.query, ['firstName', 'lastName', 'email', 'branchId', 'isActive']);
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await userService.queryUsers(filter, options);
-  res.locals.payload = result;
-  res.locals.serializer = serializeUser;
-  next();
+
+  const result = await userService.getUsers(filter, options);
+
+  res.status(httpStatus.OK).send({
+    results: serializeUsers(result.results),
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
+    totalResults: result.totalResults,
+  });
 });
 
-const getUser = catchAsync(async (req, res, next) => {
-  await authorizationService.assertCanReadUser(req.user, req.params.userId);
-
+const getUser = catchAsync(async (req, res) => {
   const user = await userService.getUserById(req.params.userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  res.status(httpStatus.OK).send(serializeUser(user));
+});
+
+const updateStatus = catchAsync(async (req, res) => {
+  const { isActive } = req.body;
+  const { userId } = req.params;
+  const actorId = req.user.id;
+
+  let user;
+  if (isActive) {
+    user = await userService.activateUser(actorId, userId);
+  } else {
+    user = await userService.suspendUser(actorId, userId);
   }
-  res.locals.payload = user;
-  res.locals.serializer = serializeUser;
-  next();
+
+  res.status(httpStatus.OK).send(serializeUser(user));
 });
 
-const updateUser = catchAsync(async (req, res, next) => {
-  await authorizationService.assertCanManageUser(req.user, req.params.userId);
-
-  const user = await userService.updateUserById(req.params.userId, req.body);
-  res.locals.payload = user;
-  res.locals.serializer = serializeUser;
-  next();
+const archiveUser = catchAsync(async (req, res) => {
+  const user = await userService.archiveUser(req.user.id, req.params.userId);
+  res.status(httpStatus.OK).send(serializeUser(user));
 });
 
-const deleteUser = catchAsync(async (req, res, next) => {
-  await authorizationService.assertCanManageUser(req.user, req.params.userId);
-
-  await userService.deleteUserById(req.params.userId);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
+const restoreUser = catchAsync(async (req, res) => {
+  const user = await userService.restoreUser(req.user.id, req.params.userId);
+  res.status(httpStatus.OK).send(serializeUser(user));
 });
 
-export { createUser, getUsers, getUser, updateUser, deleteUser };
+export const userController = {
+  getMe,
+  getUsers,
+  getUser,
+  updateStatus,
+  archiveUser,
+  restoreUser,
+};

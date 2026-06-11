@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { ApiError } from '../../../shared/ApiError.js';
 import { logger } from '../../../infrastructure/logger.js';
-import { hasPermission, getMaxRoleLevel, invalidateUserPermissionCache } from './permission.service.js';
+import { hasPermission, getMaxRoleLevel } from './permission.service.js';
 import { logEvent } from '../../audit/index.js';
 import { prisma } from '../../../infrastructure/prisma.js';
 
@@ -209,8 +209,7 @@ const assignRoleToUser = async (actor, targetUserId, roleId) => {
       tx,
     );
 
-    // 4. Invalidate cache so permissions update immediately
-    await invalidateUserPermissionCache(targetUserId);
+    // 4. Smart Invalidation: The next request will fetch new roleVersions and cache miss automatically
 
     logger.info(
       { event: 'authz.role.assigned', actorId: actor.id, targetUserId, roleId },

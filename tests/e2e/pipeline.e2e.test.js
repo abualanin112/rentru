@@ -19,12 +19,7 @@ describe('Request Pipeline Verification', () => {
   describe('Route Registration Isolation', () => {
     it('should isolate IAM routes correctly', async () => {
       // Just check if auth route exists (might be 400 or 404 depending on body, but not 404 from Express router)
-      const res = await request(app).post('/v1/auth/login').send({});
-      expect(res.status).not.toBe(httpStatus.NOT_FOUND); // meaning route is registered
-    });
-
-    it('should isolate Notes routes correctly', async () => {
-      const res = await request(app).get('/v1/notes');
+      const res = await request(app).get('/v1/auth/google');
       expect(res.status).not.toBe(httpStatus.NOT_FOUND); // meaning route is registered
     });
   });

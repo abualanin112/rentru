@@ -1,63 +1,63 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../../shared/CatchAsync.js';
-import { authService, userService, tokenService } from '../services/index.js';
-import { serializeUser } from '../user.serializer.js';
+import * as authService from '../services/auth.service.js';
+import { config } from '../../../infrastructure/config.js';
 
-const register = catchAsync(async (req, res, next) => {
-  const user = await userService.createUser(req.body);
-  const tokens = await tokenService.generateAuthTokens(user, undefined, null, req.ip, req.get('User-Agent'));
-  res.locals.statusCode = httpStatus.CREATED;
-  res.locals.payload = { user: serializeUser(user), tokens };
-  next();
+export const googleCallback = catchAsync(async (req, res) => {
+  let statePayload = {};
+  try {
+    if (req.query.state) {
+      const decodedStr = Buffer.from(req.query.state, 'base64url').toString('utf-8');
+      statePayload = JSON.parse(decodedStr);
+    }
+  } catch {
+    // Ignore malformed state
+  }
+
+  const { deviceId = 'unknown-device', inviteToken } = statePayload;
+
+  const result = await authService.handleGoogleLogin(req.user, deviceId, inviteToken, req.ip);
+
+  // Set Refresh Token in HttpOnly cookie
+  res.cookie('refreshToken', result.tokens.refresh.token, {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'strict',
+    maxAge: config.jwt.refreshExpirationDays * 24 * 60 * 60 * 1000,
+  });
+
+  // Redirect to frontend with access token in fragment or query
+  const frontendUrl = config.cors.origins[0];
+  res.redirect(`${frontendUrl}/auth/callback?accessToken=${result.tokens.access.token}&userId=${result.user.id}`);
 });
 
-const login = catchAsync(async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await authService.loginUserWithEmailAndPassword(email, password);
-  const tokens = await tokenService.generateAuthTokens(user, undefined, null, req.ip, req.get('User-Agent'));
-  res.locals.payload = { user: serializeUser(user), tokens };
-  next();
+export const refreshTokens = catchAsync(async (req, res) => {
+  const { deviceId } = req.body;
+  const refreshToken = req.cookies.refreshToken;
+
+  const tokens = await authService.refreshAuth(refreshToken, deviceId, req.ip);
+
+  res.cookie('refreshToken', tokens.refresh.token, {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'strict',
+    maxAge: config.jwt.refreshExpirationDays * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(httpStatus.OK).json({
+    message: 'Tokens refreshed',
+    data: { access: tokens.access },
+  });
 });
 
-const logout = catchAsync(async (req, res, next) => {
-  await authService.logout(req.body.refreshToken);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
-});
+export const logout = catchAsync(async (req, res) => {
+  await authService.logout(req.user.id);
 
-const refreshTokens = catchAsync(async (req, res, next) => {
-  const tokens = await authService.refreshAuth(req.body.refreshToken, req.ip, req.get('User-Agent'));
-  res.locals.payload = { ...tokens };
-  next();
-});
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'strict',
+  });
 
-const forgotPassword = catchAsync(async (req, res, next) => {
-  await authService.forgotPassword(req.body.email);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
+  res.status(httpStatus.NO_CONTENT).send();
 });
-
-const resetPassword = catchAsync(async (req, res, next) => {
-  await authService.resetPassword(req.body.token, req.body.password);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
-});
-
-const sendVerificationEmail = catchAsync(async (req, res, next) => {
-  await authService.sendVerificationEmail(req.user);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
-});
-
-const verifyEmail = catchAsync(async (req, res, next) => {
-  await authService.verifyEmail(req.body.token);
-  res.locals.statusCode = httpStatus.NO_CONTENT;
-  res.locals.payload = null;
-  next();
-});
-
-export { register, login, logout, refreshTokens, forgotPassword, resetPassword, sendVerificationEmail, verifyEmail };

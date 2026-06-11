@@ -20,4 +20,4 @@ We decided to implement a dynamic, database-driven RBAC system.
 
 - **Positive**: We can now define new granular permissions and custom roles without code changes or database migrations. The system supports complex authorization logic natively.
 - **Negative**: Resolving a user's permissions now requires joining 4 tables (`User`, `UserRole`, `Role`, `RolePermission`).
-- **Mitigation**: We implemented an LRU memory cache with a 5-minute TTL for resolved user permissions to prevent database strain on every authorized request.
+- **Mitigation**: We rely on PostgreSQL composite indexes and a Direct-DB permission resolution strategy (no cache). The `roleVersion` field on `Role` enables Smart Invalidation: if a role's permissions change, `version` is incremented, and the auth middleware compares the JWT's cached version against the DB, forcing a silent token refresh on mismatch. This eliminates cache invalidation complexity entirely. Database query performance is monitored via `pg_stat_statements` and Prisma's slow query telemetry.

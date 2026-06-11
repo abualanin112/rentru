@@ -11,9 +11,15 @@ const serializeUser = (user) => {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
-    isEmailVerified: user.isEmailVerified,
-    // explicitly NOT mapping `password` or legacy `role`
+    firstName: user.firstName,
+    lastName: user.lastName,
+    avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
+    deletedAt: user.deletedAt,
+    branchId: user.branchId,
+    lastLoginAt: user.lastLoginAt,
+    roles: user.roles, // If included in nested queries
+    // explicitly NOT mapping `googleId`, `sessions`
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

@@ -8,6 +8,7 @@ const validate = (schema) => (req, res, next) => {
       body: req.body,
       query: req.query,
       params: req.params,
+      cookies: req.cookies,
     });
 
     // Update request with validated and coerced data

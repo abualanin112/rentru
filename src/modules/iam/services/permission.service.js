@@ -1,74 +1,30 @@
+import httpStatus from 'http-status';
+import { ApiError } from '../../../shared/ApiError.js';
 import { prisma } from '../../../infrastructure/prisma.js';
-import { cacheGet, cacheSet, cacheDel, cacheIncr } from '../../../infrastructure/cache.js';
 import { logger } from '../../../infrastructure/logger.js';
+import { metrics } from '../../../infrastructure/metrics.js';
 
 // ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
 
-const CACHE_PREFIX = 'rbac:permissions';
-const CACHE_TTL_SECONDS = 300; // 5 minutes
 const WILDCARD_PERMISSION = '*:*:*';
-
-// ──────────────────────────────────────────────────────────────
-// Cache Versioning & Invalidation
-// ──────────────────────────────────────────────────────────────
-
-const GLOBAL_VERSION_KEY = 'rbac:permissions:version';
-
-/**
- * Get the current global cache version for the RBAC namespace.
- * Defaults to 1 if not set.
- * @returns {Promise<number>}
- */
-const getCacheVersion = async () => {
-  const version = await cacheGet(GLOBAL_VERSION_KEY);
-  if (version) return parseInt(version, 10);
-
-  await cacheSet(GLOBAL_VERSION_KEY, 1, 60 * 60 * 24 * 365); // 1 year
-  return 1;
-};
-
-/**
- * Increment the global RBAC cache version.
- * This instantly invalidates all cached permissions across the system,
- * acting as a safety switch during RBAC schema evolution.
- * Uses Redis INCR for atomic increments to prevent race conditions.
- * @returns {Promise<number>}
- */
-const bumpGlobalPermissionCacheVersion = async () => {
-  const newVersion = await cacheIncr(GLOBAL_VERSION_KEY);
-  logger.info({ event: 'rbac.cache.version_bumped', newVersion }, 'Global permission cache version bumped atomically');
-  return newVersion;
-};
 
 /**
  * Resolve all permission strings for a user by traversing the RBAC graph:
  * User → UserRole → Role → RolePermission → Permission.
  *
- * Results are cached under `rbac:permissions:vX:user:{userId}` with a 5-minute TTL.
- * On cache miss, performs a single Prisma query with nested includes.
- *
  * @param {string} userId - The user's CUID
  * @returns {Promise<Set<string>>} Set of `action:resource:scope` permission strings
  */
 const getUserPermissions = async (userId) => {
-  const version = await getCacheVersion();
-  const cacheKey = `${CACHE_PREFIX}:v${version}:user:${userId}`;
-
-  // 1. Cache lookup
-  const cached = await cacheGet(cacheKey);
-  if (cached) {
-    return new Set(cached);
-  }
-
-  // 2. DB query — single round-trip via nested includes
+  // DB query — single round-trip via nested includes
   const userRoles = await prisma.userRole.findMany({
     where: { userId },
     include: {
       role: {
         include: {
-          rolePermissions: {
+          permissions: {
             include: {
               permission: true,
             },
@@ -78,22 +34,18 @@ const getUserPermissions = async (userId) => {
     },
   });
 
-  // 3. Flatten into `action:resource:scope` strings
+  // Flatten into `action:subject:scope` strings
   const permissions = new Set();
   userRoles.forEach((ur) => {
-    ur.role.rolePermissions.forEach((rp) => {
-      const { action, resource, scope } = rp.permission;
-      permissions.add(`${action}:${resource}:${scope}`);
+    ur.role.permissions.forEach((rp) => {
+      const { action, subject, scope } = rp.permission;
+      permissions.add(`${action}:${subject}:${scope}`);
     });
   });
 
-  // 4. Persist to cache
-  const permArray = Array.from(permissions);
-  await cacheSet(cacheKey, permArray, CACHE_TTL_SECONDS);
-
   logger.debug(
-    { event: 'rbac.permissions.resolved', userId, count: permArray.length, cacheKey },
-    'User permissions resolved from database and cached',
+    { event: 'rbac.permissions.resolved', userId, count: permissions.size },
+    'User permissions resolved directly from database',
   );
 
   return permissions;
@@ -124,9 +76,15 @@ const matchesPermission = (grantedPermissions, requiredPermission) => {
   // Super admin wildcard
   if (grantedPermissions.has(WILDCARD_PERMISSION)) return true;
 
-  // Scope escalation: :any supersedes :own
+  // Scope escalation: :any > :branch > :own
   if (requiredPermission.endsWith(':own')) {
+    const branchVariant = requiredPermission.replace(/:own$/, ':branch');
     const anyVariant = requiredPermission.replace(/:own$/, ':any');
+    if (grantedPermissions.has(branchVariant) || grantedPermissions.has(anyVariant)) return true;
+  }
+
+  if (requiredPermission.endsWith(':branch')) {
+    const anyVariant = requiredPermission.replace(/:branch$/, ':any');
     if (grantedPermissions.has(anyVariant)) return true;
   }
 
@@ -180,47 +138,55 @@ const getMaxRoleLevel = async (userId) => {
   return Math.max(...userRoles.map((ur) => ur.role.level));
 };
 
-/**
- * Invalidate the cached permissions for a specific user.
- * Call after assigning/removing a role from this user.
- *
- * @param {string} userId - The user whose cache should be invalidated
- * @returns {Promise<void>}
- */
-const invalidateUserPermissionCache = async (userId) => {
-  const version = await getCacheVersion();
-  const cacheKey = `${CACHE_PREFIX}:v${version}:user:${userId}`;
-  await cacheDel(cacheKey);
-  logger.info({ event: 'rbac.cache.invalidated', userId, cacheKey }, 'Permission cache invalidated for user');
-};
+// ──────────────────────────────────────────────────────────────
+// ABAC (Ownership) Utilities for Controllers
+// ──────────────────────────────────────────────────────────────
 
 /**
- * Invalidate cached permissions for every user that holds a specific role.
- * Call after modifying a role's permission set.
+ * Controller utility: Enforce ownership ABAC rules dynamically.
+ * Assumes reqUser.permissions has been populated by the auth middleware.
  *
- * @param {string} roleId - The role whose associated users should be cache-busted
- * @returns {Promise<void>}
+ * @param {Object} reqUser - The user object from the request
+ * @param {string} targetUserId - The ID of the owner of the resource being accessed
+ * @param {string} permissionBase - The base permission string (e.g. `read:users`)
+ * @throws {ApiError} 403 Forbidden if the user lacks scope to access the target
  */
-const invalidateRolePermissionCache = async (roleId) => {
-  const userRoles = await prisma.userRole.findMany({
-    where: { roleId },
-    select: { userId: true },
-  });
+const checkOwnership = (reqUser, targetUserId, permissionBase) => {
+  if (reqUser.permissions && reqUser.permissions.has(WILDCARD_PERMISSION)) return;
+  if (matchesPermission(reqUser.permissions, `${permissionBase}:any`)) return;
+  if (matchesPermission(reqUser.permissions, `${permissionBase}:branch`)) {
+    // Branch logic check requires fetching the target's branch, usually done by `checkBranch`
+    // If they hold `:branch` but not `:any`, and we are checking purely ownership, we can't confirm branch match here
+    // So we fall through to :own check
+  }
 
-  await Promise.all(userRoles.map((ur) => invalidateUserPermissionCache(ur.userId)));
+  if (reqUser.id === targetUserId && matchesPermission(reqUser.permissions, `${permissionBase}:own`)) {
+    return;
+  }
 
-  logger.info(
-    { event: 'rbac.cache.role_invalidated', roleId, usersAffected: userRoles.length },
-    'Permission cache invalidated for all users holding role',
-  );
+  metrics.auth.authorizationDenied += 1;
+  throw new ApiError(httpStatus.FORBIDDEN, 'Insufficient permissions to access this resource');
 };
 
-export {
-  getUserPermissions,
-  matchesPermission,
-  hasPermission,
-  getMaxRoleLevel,
-  invalidateUserPermissionCache,
-  invalidateRolePermissionCache,
-  bumpGlobalPermissionCacheVersion,
+/**
+ * Controller utility: Enforce branch-level ABAC rules dynamically.
+ * Assumes reqUser.permissions has been populated by the auth middleware.
+ *
+ * @param {Object} reqUser - The user object from the request
+ * @param {string} targetBranchId - The ID of the branch the resource belongs to
+ * @param {string} permissionBase - The base permission string (e.g. `read:users`)
+ * @throws {ApiError} 403 Forbidden if the user lacks scope to access the target
+ */
+const checkBranch = (reqUser, targetBranchId, permissionBase) => {
+  if (reqUser.permissions && reqUser.permissions.has(WILDCARD_PERMISSION)) return;
+  if (matchesPermission(reqUser.permissions, `${permissionBase}:any`)) return;
+
+  if (reqUser.branchId === targetBranchId && matchesPermission(reqUser.permissions, `${permissionBase}:branch`)) {
+    return;
+  }
+
+  metrics.auth.authorizationDenied += 1;
+  throw new ApiError(httpStatus.FORBIDDEN, 'Insufficient permissions to access resources in this branch');
 };
+
+export { getUserPermissions, matchesPermission, hasPermission, getMaxRoleLevel, checkOwnership, checkBranch };

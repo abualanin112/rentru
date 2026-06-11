@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import httpStatus from 'http-status';
 import { config } from './infrastructure/config.js';
@@ -12,7 +13,7 @@ import * as rateLimiter from './middleware/rate-limiter.middleware.js';
 import * as error from './middleware/error.middleware.js';
 import * as responseInterceptor from './middleware/response-interceptor.middleware.js';
 import { v1Router } from './modules/router.js';
-import { jwtStrategy } from './infrastructure/passport.js';
+import { jwtStrategy, googleStrategy } from './infrastructure/passport.js';
 import { prisma } from './infrastructure/prisma.js';
 
 const { apiLimiter } = rateLimiter;
@@ -110,6 +111,9 @@ app.use(express.json({ limit: '10kb' }));
 // parse urlencoded request body
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
+// parse cookies
+app.use(cookieParser());
+
 // gzip compression
 app.use(compression());
 
@@ -123,6 +127,7 @@ app.use('/v1', apiLimiter);
 // jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
+passport.use('google', googleStrategy);
 
 // mount unified v1 router
 app.use('/v1', v1Router);

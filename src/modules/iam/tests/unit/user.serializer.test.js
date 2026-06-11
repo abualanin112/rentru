@@ -11,10 +11,16 @@ describe('User Serializer', () => {
       const mockRawUser = {
         id: 'user-id-123',
         email: 'user@example.com',
-        name: 'John Doe',
-        isEmailVerified: true,
-        password: '$argon2id$v=19$m=65536,t=3,p=4$somehashedpassword',
-        role: 'user', // legacy role
+        firstName: 'John',
+        lastName: 'Doe',
+        avatarUrl: 'https://avatar.com/123',
+        isActive: true,
+        deletedAt: null,
+        branchId: 'branch-1',
+        lastLoginAt: new Date('2026-01-01T00:00:00Z'),
+        googleId: '1234567890', // Sensitive field to exclude
+        sessions: [], // Sensitive field to exclude
+        roles: [],
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-02T00:00:00Z'),
         extraUnwantedField: 'should-be-removed',
@@ -26,15 +32,21 @@ describe('User Serializer', () => {
       expect(serialized).toEqual({
         id: 'user-id-123',
         email: 'user@example.com',
-        name: 'John Doe',
-        isEmailVerified: true,
+        firstName: 'John',
+        lastName: 'Doe',
+        avatarUrl: 'https://avatar.com/123',
+        isActive: true,
+        deletedAt: null,
+        branchId: 'branch-1',
+        lastLoginAt: mockRawUser.lastLoginAt,
+        roles: [],
         createdAt: mockRawUser.createdAt,
         updatedAt: mockRawUser.updatedAt,
       });
 
       // Explicitly check for omissions
-      expect(serialized).not.toHaveProperty('password');
-      expect(serialized).not.toHaveProperty('role');
+      expect(serialized).not.toHaveProperty('googleId');
+      expect(serialized).not.toHaveProperty('sessions');
       expect(serialized).not.toHaveProperty('extraUnwantedField');
     });
   });
@@ -52,20 +64,28 @@ describe('User Serializer', () => {
         {
           id: 'user-1',
           email: 'user1@example.com',
-          name: 'User One',
-          isEmailVerified: true,
-          password: 'pass',
-          role: 'admin',
+          firstName: 'User',
+          lastName: 'One',
+          avatarUrl: null,
+          isActive: true,
+          deletedAt: null,
+          branchId: 'branch-1',
+          lastLoginAt: null,
+          roles: [],
           createdAt: new Date('2026-01-01T00:00:00Z'),
           updatedAt: new Date('2026-01-01T00:00:00Z'),
         },
         {
           id: 'user-2',
           email: 'user2@example.com',
-          name: 'User Two',
-          isEmailVerified: false,
-          password: 'pass',
-          role: 'user',
+          firstName: 'User',
+          lastName: 'Two',
+          avatarUrl: null,
+          isActive: false,
+          deletedAt: null,
+          branchId: 'branch-1',
+          lastLoginAt: null,
+          roles: [],
           createdAt: new Date('2026-01-02T00:00:00Z'),
           updatedAt: new Date('2026-01-02T00:00:00Z'),
         },
@@ -77,16 +97,28 @@ describe('User Serializer', () => {
       expect(serialized[0]).toEqual({
         id: 'user-1',
         email: 'user1@example.com',
-        name: 'User One',
-        isEmailVerified: true,
+        firstName: 'User',
+        lastName: 'One',
+        avatarUrl: null,
+        isActive: true,
+        deletedAt: null,
+        branchId: 'branch-1',
+        lastLoginAt: null,
+        roles: [],
         createdAt: mockRawUsers[0].createdAt,
         updatedAt: mockRawUsers[0].updatedAt,
       });
       expect(serialized[1]).toEqual({
         id: 'user-2',
         email: 'user2@example.com',
-        name: 'User Two',
-        isEmailVerified: false,
+        firstName: 'User',
+        lastName: 'Two',
+        avatarUrl: null,
+        isActive: false,
+        deletedAt: null,
+        branchId: 'branch-1',
+        lastLoginAt: null,
+        roles: [],
         createdAt: mockRawUsers[1].createdAt,
         updatedAt: mockRawUsers[1].updatedAt,
       });

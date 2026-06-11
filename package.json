@@ -1,7 +1,7 @@
 {
   "name": "Rentru",
   "version": "2.0.0",
-  "description": "Production-grade Notes API built with Express, Prisma, PostgreSQL, and Docker",
+  "description": "Rentru ERP is a real-world ERP system for managing seasonal rental operations. production-grade ERP platform with modular architecture, IAM, RBAC, Audit Logging, Reservations, Properties, Branches, Financial Operations, and future business modules.",
   "bin": "bin/createNodejsApp.js",
   "main": "src/index.js",
   "type": "module",
@@ -13,6 +13,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.18.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "scripts": {
     "start": "node src/index.js",
@@ -69,6 +72,7 @@
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
     "dotenv": "^17.4.2",
@@ -76,12 +80,13 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^7.2.0",
     "http-status": "^1.4.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "lru-cache": "^11.5.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
     "passport": "^0.7.0",
-    "passport-jwt": "^4.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-jwt": "^4.0.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "swagger-jsdoc": "^6.2.8",

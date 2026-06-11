@@ -1,6 +1,5 @@
 import { create as createUser, findByEmail } from '../../repositories/user.repository.js';
 import { create as createToken, deleteExpiredTokens } from '../../repositories/token.repository.js';
-import { create as createNote } from '../../../notes/note.repository.js';
 
 describe('Repositories Layer', () => {
   let mockTx;
@@ -80,20 +79,6 @@ describe('Repositories Layer', () => {
       expect(mockTx.token.deleteMany).toHaveBeenCalledTimes(1);
       expect(mockTx.token.deleteMany).toHaveBeenCalledWith({
         where: { id: { in: ['t1', 't2'] } },
-      });
-    });
-  });
-
-  describe('Note Repository', () => {
-    test('should call prisma.note.create and connect owner relation', async () => {
-      const noteData = { title: 'Hello', content: 'World', ownerId: 'user123' };
-      await createNote(noteData, mockTx);
-      expect(mockTx.note.create).toHaveBeenCalledWith({
-        data: {
-          title: 'Hello',
-          content: 'World',
-          owner: { connect: { id: 'user123' } },
-        },
       });
     });
   });

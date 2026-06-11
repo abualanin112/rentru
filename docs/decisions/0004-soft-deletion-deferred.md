@@ -2,7 +2,7 @@
 
 ## Status
 
-Deferred / Backlog
+Superseded by IAM ERP Phase 1-5 Domain Schema
 
 ## Context
 
@@ -22,4 +22,4 @@ We currently implement **Hard Deletions** and rely on cascading hooks to clean u
 
 - **Positive**: Simpler business logic and database queries. Smaller active database size.
 - **Negative**: Data recovery is impossible without restoring from a full database backup.
-- **Future Action**: As the system scales or compliance requirements dictate data retention policies, this decision will be revisited and a unified `deletedAt` pattern may be introduced.
+- **Resolution**: **SUPERSEDED**. The IAM ERP architecture now enforces strict **Soft Deletions** via `deletedAt` for financial and operational integrity. Hard deletion is explicitly banned for the `User` entity. Prisma Client Extensions ("Silent Guardian") have been implemented to automate the injection of `deletedAt: null` to mitigate the query complexity concern mentioned in this ADR.

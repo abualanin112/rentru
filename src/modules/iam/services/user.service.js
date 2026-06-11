@@ -1,137 +1,105 @@
 import httpStatus from 'http-status';
-import {
-  isEmailTaken,
-  create as createUserRecord,
-  paginateUsers as paginateUserRecords,
-  findById,
-  findByEmail as findUserByEmailRecord,
-  updateById as updateUserByIdRecord,
-  deleteById as deleteUserByIdRecord,
-} from '../repositories/user.repository.js';
-import { runInTransaction } from '../../../infrastructure/prisma.js';
-// TODO: HIGH-RISK AUTHORIZATION COUPLING
+import { prisma, runInTransaction } from '../../../infrastructure/prisma.js';
 import { ApiError } from '../../../shared/ApiError.js';
-import { hashPassword } from '../../../shared/Password.js';
-import { logger } from '../../../infrastructure/logger.js';
 import { logEvent } from '../../audit/index.js';
-
-const userDeletionHooks = [];
-const registerUserDeletionHook = (hook) => userDeletionHooks.push(hook);
+import { destroySession } from './session.service.js';
+import { paginate } from '../../../shared/Paginate.js';
+import { enforcePrivilegeEscalationGuard } from './role.service.js';
+import { getMaxRoleLevel } from './permission.service.js';
 
 /**
- * Create a user
- * @param {Object} userBody
- * @returns {Promise<Object>}
+ * Fetch a user profile (for the currently authenticated user)
  */
-const createUser = async (userBody) => {
-  // Hash password explicitly before saving
-  const hashedPassword = await hashPassword(userBody.password);
-
-  if (await isEmailTaken(userBody.email)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
-  }
-
-  return runInTransaction(async (tx) => {
-    const user = await createUserRecord(
-      {
-        ...userBody,
-        password: hashedPassword,
+export const getMe = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      branch: {
+        select: { id: true, name: true, isActive: true },
       },
-      tx,
-    );
-
-    await logEvent(
-      {
-        event: 'users.created',
-        entityType: 'User',
-        entityId: user.id,
-        action: 'CREATE',
-        metadata: { email: user.email },
+      roles: {
+        include: {
+          role: true,
+        },
       },
-      tx,
-    );
-
-    logger.info({ event: 'users.created', targetId: user.id }, 'User created successfully');
-    return user;
+    },
   });
-};
 
-/**
- * Query for users
- * @param {Object} filter - Query filter
- * @param {Object} options - Query options
- * @param {string} [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param {number} [options.limit] - Maximum number of results per page (default = 10)
- * @param {number} [options.page] - Current page (default = 1)
- * @returns {Promise<Object>} Standard relational pagination response shape
- */
-const queryUsers = async (filter, options) => {
-  const users = await paginateUserRecords(filter, options);
-  return users;
-};
-
-/**
- * Get user by id
- * @param {string} id
- * @returns {Promise<Object|null>}
- */
-const getUserById = async (id) => {
-  return findById(id);
-};
-
-/**
- * Find user by ID with optional select projection.
- * Used by infrastructure (passport) for lightweight lookups.
- * @param {string} id
- * @param {Object} [options]
- * @param {Object} [options.select] - Prisma select projection
- * @returns {Promise<Object|null>}
- */
-const findUserById = async (id, options = {}) => {
-  return findById(id, options);
-};
-
-/**
- * Get user by email
- * @param {string} email
- * @returns {Promise<Object|null>}
- */
-const getUserByEmail = async (email) => {
-  return findUserByEmailRecord(email);
-};
-
-/**
- * Update user by id
- * @param {string} userId
- * @param {Object} updateBody
- * @returns {Promise<Object>}
- */
-const updateUserById = async (userId, updateBody) => {
-  const user = await getUserById(userId);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const dataToUpdate = { ...updateBody };
-  // Hash password if it is being updated
-  if (dataToUpdate.password) {
-    dataToUpdate.password = await hashPassword(dataToUpdate.password);
+  return user;
+};
+
+/**
+ * List users (supports pagination and filtering)
+ * Note: Silent Guardian automatically filters out archived (deletedAt !== null) users
+ * and enforces Branch Isolation unless the actor is a Super Admin.
+ */
+export const getUsers = async (filter, options) => {
+  return paginate(prisma.user, filter, options);
+};
+
+/**
+ * Get a specific user by ID
+ */
+export const getUserById = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      branch: {
+        select: { id: true, name: true, isActive: true },
+      },
+      roles: {
+        include: {
+          role: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (updateBody.email && (await isEmailTaken(updateBody.email, userId))) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
+  return user;
+};
+
+/**
+ * Suspend an active user (isActive: false)
+ * Immediately destroys their active session.
+ */
+export const suspendUser = async (actorId, targetUserId) => {
+  if (actorId === targetUserId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You cannot suspend yourself');
   }
+
+  const user = await getUserById(targetUserId);
+
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User is already suspended');
+  }
+
+  // Privilege Escalation Guard
+  const targetMaxLevel = await getMaxRoleLevel(targetUserId);
+  await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
 
   return runInTransaction(async (tx) => {
-    const updatedUser = await updateUserByIdRecord(userId, dataToUpdate, tx);
+    const updatedUser = await tx.user.update({
+      where: { id: targetUserId },
+      data: { isActive: false },
+    });
+
+    await destroySession(targetUserId);
 
     await logEvent(
       {
-        event: 'users.updated',
+        event: 'user.suspended',
         entityType: 'User',
-        entityId: userId,
-        action: 'UPDATE',
-        metadata: { changedFields: Object.keys(dataToUpdate) },
+        entityId: targetUserId,
+        actorId,
+        action: 'SUSPEND',
       },
       tx,
     );
@@ -141,48 +109,127 @@ const updateUserById = async (userId, updateBody) => {
 };
 
 /**
- * Delete user by id
- * @param {string} userId
- * @returns {Promise<Object>}
+ * Archive a user (Soft Delete: deletedAt = Date)
+ * Immediately destroys their active session.
  */
-const deleteUserById = async (userId) => {
-  const user = await getUserById(userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+export const archiveUser = async (actorId, targetUserId) => {
+  if (actorId === targetUserId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You cannot archive yourself');
   }
 
-  // Tiered Deletion (Correction 5): Notes are RESTRICT at DB level,
-  // we explicitly delete them inside a transaction before deleting the user.
-  // Ephemeral tokens cascade automatically via foreign key settings.
-  await runInTransaction(async (tx) => {
-    // Execute any registered pre-deletion hooks from other modules (dependency inversion)
-    if (userDeletionHooks.length > 0) {
-      await Promise.all(userDeletionHooks.map((hook) => hook(userId, tx)));
-    }
+  // Ensure user exists and actor has access before archiving
+  await getUserById(targetUserId);
 
-    await deleteUserByIdRecord(userId, tx);
+  // Privilege Escalation Guard
+  const targetMaxLevel = await getMaxRoleLevel(targetUserId);
+  await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
+
+  // TODO: Implement Pre-Offboarding Checks
+  // Note: Deferred validation requirement. Cannot archive an employee
+  // if they have open tasks, financial trusts, or active reservations.
+  // Wait until those modules are deployed in the ERP.
+
+  return runInTransaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id: targetUserId },
+      data: { deletedAt: new Date() },
+    });
+
+    await destroySession(targetUserId);
 
     await logEvent(
       {
-        event: 'users.deleted',
+        event: 'user.archived',
         entityType: 'User',
-        entityId: userId,
-        action: 'DELETE',
+        entityId: targetUserId,
+        actorId,
+        action: 'ARCHIVE',
       },
       tx,
     );
-  });
 
-  return user;
+    return updatedUser;
+  });
 };
 
-export {
-  createUser,
-  queryUsers,
-  getUserById,
-  getUserByEmail,
-  updateUserById,
-  deleteUserById,
-  registerUserDeletionHook,
-  findUserById,
+/**
+ * Activate a suspended user
+ * Sets isActive = true.
+ */
+export const activateUser = async (actorId, targetUserId) => {
+  const user = await getUserById(targetUserId);
+
+  if (user.isActive) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User is already active');
+  }
+
+  // Privilege Escalation Guard
+  const targetMaxLevel = await getMaxRoleLevel(targetUserId);
+  await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
+
+  return runInTransaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id: targetUserId },
+      data: { isActive: true },
+    });
+
+    await logEvent(
+      {
+        event: 'user.activated',
+        entityType: 'User',
+        entityId: targetUserId,
+        actorId,
+        action: 'ACTIVATE',
+      },
+      tx,
+    );
+
+    return updatedUser;
+  });
+};
+
+/**
+ * Restore an archived user (Soft Undelete)
+ * Sets deletedAt = null and isActive = true.
+ */
+export const restoreUser = async (actorId, targetUserId) => {
+  // Silent Guardian intercepts `findUnique` and `update` to inject `deletedAt: null`.
+  // Therefore, we cannot use Prisma's standard `update` or `findFirst` to interact with an archived user.
+  // We must bypass the extension by executing raw SQL.
+
+  return runInTransaction(async (tx) => {
+    // 1. Verify the user actually exists and is deleted
+    const users = await tx.$queryRaw`SELECT id, "deleted_at" FROM users WHERE id = ${targetUserId}::uuid LIMIT 1`;
+
+    if (!users || users.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
+
+    if (!users[0].deleted_at) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'User is not archived');
+    }
+
+    // Privilege Escalation Guard
+    // Since Silent Guardian prevents normal operations, we must calculate the level explicitly
+    const targetMaxLevel = await getMaxRoleLevel(targetUserId);
+    await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
+
+    // 2. Perform the update via Raw SQL to bypass Silent Guardian
+    await tx.$executeRaw`UPDATE users SET "deleted_at" = NULL, "is_active" = true WHERE id = ${targetUserId}::uuid`;
+
+    // 3. Log the restoration event
+    await logEvent(
+      {
+        event: 'user.restored',
+        entityType: 'User',
+        entityId: targetUserId,
+        actorId,
+        action: 'RESTORE',
+      },
+      tx,
+    );
+
+    // Return the fresh user object via normal Prisma now that they are un-deleted
+    return tx.user.findUnique({ where: { id: targetUserId } });
+  });
 };

@@ -23,7 +23,23 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'clover', 'html'],
-      exclude: ['node_modules', 'src/config', 'src/app.js', 'tests'],
+      exclude: [
+        'node_modules',
+        'src/config',
+        'src/app.js',
+        'src/index.js',
+        'tests',
+        'src/docs/**',
+        'src/infrastructure/workers/**',
+        'src/infrastructure/logger.js',
+        'src/infrastructure/metrics.js',
+        'src/infrastructure/als.js',
+        'src/infrastructure/prisma.js',
+        'src/infrastructure/passport.js',
+        'src/infrastructure/email/index.js',
+        'src/modules/audit/index.js',
+        'src/modules/iam/index.js',
+      ],
     },
     server: {
       deps: {

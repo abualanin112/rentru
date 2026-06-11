@@ -1,6 +1,6 @@
-# 📝 Production-Grade Notes API Backend
+# 🏢 Rentru ERP (Thoth PMS) Backend
 
-> A secure, high-performance, and highly resilient backend system for note-taking applications, built with Node.js, Express, Prisma ORM, PostgreSQL, and Docker. Hardened for high-concurrency enterprise use cases.
+> A secure, high-performance, and highly resilient backend system for Property Management (ERP/PMS), built with Node.js, Express, Prisma ORM, PostgreSQL, and Docker. Hardened for high-concurrency enterprise use cases with dynamic RBAC and strict data isolation.
 
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.18.0-blue.svg?style=flat-square)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/express-v4.21.2-green.svg?style=flat-square)](https://expressjs.com)
@@ -9,39 +9,38 @@
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg?style=flat-square)](https://docker.com)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 
-This backend represents a complete, secure, and production-ready solution tailored for building robust note-taking services or integrating note management features into larger applications. It provides full user management, session token rotation, robust note manipulation, tags management, and resilient audit logging.
+This backend represents a complete, secure, and production-ready enterprise solution. It provides a robust Identity and Access Management (IAM) module, strict branch-level data isolation, passwordless authentication, and resilient audit logging.
 
 ---
 
 ## 🌟 Key Features
 
-- **Robust Notes Management (Core)**:
-  - Complete CRUD operations for notes (`GET`, `POST`, `PATCH`, `DELETE`).
-  - Strict payload validation with Zod (e.g., title limit to 200 characters, tags as array).
-  - Advanced querying: full-text search (PostgreSQL index optimized), page pagination, filtering by archiving status, and custom sorting.
-- **Secure Authentication & Session Lifecycle**:
-  - Passport-powered JWT access and refresh token rotation.
-  - Bulletproof token family tracking to immediately invalidate suspicious concurrent sessions.
-  - Complete flows for user registration, login, logout, password reset, and email verification.
-- **Decoupled Resilient Audit Logging**:
-  - Independent `AuditLog` table capturing crucial system events (e.g., `auth.login`, `notes.created`).
-  - Avoids database-level foreign key cascades to ensure audit records survive even when users or notes are deleted.
-- **Modern Layered Architecture**:
-  - Strict separation of concerns (Routes ➔ Middlewares ➔ Controllers ➔ Services ➔ Repositories ➔ Prisma ➔ DB).
-- **High-Performance Pino Logging**:
-  - Integrated with Node's `AsyncLocalStorage` (ALS) to automatically inject contextual request IDs (`reqId`) and authenticated user IDs (`userId`) deep into nested service logs.
-- **Operational Hardening & HA Probes**:
-  - Helmet headers protection, rate-limiting, and compression middleware.
-  - Kubernets-ready HTTP probes (`/live` for process vitality, `/ready` for DB handshakes, and `/health` for system metrics).
-  - Safe, graceful shutdown orchestration under `SIGTERM`/`SIGINT`.
+- **Passwordless Enterprise Authentication**:
+  - Complete reliance on Google Workspace (SSO) via OAuth 2.0. No local passwords stored.
+  - Invitation-only onboarding system for strict access control.
+- **Strict Single Device Policy & Sessions**:
+  - Passport-powered JWT access and database-backed refresh token rotation.
+  - Users are strictly limited to one active device globally. Logging in from a new device instantly invalidates the previous session.
+  - Instant Kill-Switch capabilities via `isActive` status for immediate operator suspension.
+- **Dynamic Database-Driven RBAC**:
+  - Roles and permissions are fully dynamic and managed in the database, requiring no code deployments for changes.
+  - Features Smart Invalidation: token permissions are instantly rejected if the backend detects a role version mismatch.
+- **Silent Guardian (Data Isolation)**:
+  - Custom Prisma Client Extension that automatically injects `branchId` filters and `deletedAt: null` (Soft Delete) guards into every query.
+  - Ensures robust multi-branch geographic data isolation natively at the ORM layer.
+- **Resilient Audit Logging**:
+  - Dedicated `AuditLog` capturing crucial system events, actor details, and deep JSON diffs (`oldValues`/`newValues`).
+- **Distributed Background Workers**:
+  - Singleton execution enforced via PostgreSQL advisory locks (`pg_try_advisory_lock`).
+  - Automated session garbage collection, idle user deactivation, and expired invitation cleanup.
 - **Zero-Mock Testing Environment**:
-  - Highly isolated testing suite using **Vitest** and **PostgreSQL Testcontainers** to run tests against realistic database instances in Docker.
+  - Highly isolated testing suite using **Vitest** and **PostgreSQL Testcontainers** to run unit and integration tests against real database instances.
 
 ---
 
 ## 🚀 Quick Start & Installation
 
-To boot up the Notes API backend locally, follow these steps:
+To boot up the Rentru ERP backend locally, follow these steps:
 
 ### 1. Clone the Repository
 
@@ -67,15 +66,23 @@ cp .env.example .env
 Ensure the database connection URL in `.env` points to your target PostgreSQL database. The default configuration connects to the local PostgreSQL spun up by Docker:
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/notes_db?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rentru_db?schema=public"
 JWT_SECRET="your-super-secure-jwt-secret-key"
 
-# Required SMTP Email Configuration
+# Required Google OAuth Setup
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_CALLBACK_URL="http://localhost:3000/api/v1/auth/google/callback"
+
+# Required SMTP Email Configuration for Invitations
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT=465
 SMTP_USERNAME="your-gmail@gmail.com"
 SMTP_PASSWORD="your-app-password"
 EMAIL_FROM="support@rentru.com"
+
+# The email of the first Super Admin
+SUPER_ADMIN_EMAIL="admin@rentru.com"
 ```
 
 ### 4. Database Setup (Docker)
@@ -83,13 +90,19 @@ EMAIL_FROM="support@rentru.com"
 Spin up a local PostgreSQL database container:
 
 ```bash
-docker run --name notes-postgres -e POSTGRES_DB=notes_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16-alpine
+docker run --name rentru-postgres -e POSTGRES_DB=rentru_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16-alpine
 ```
 
 Synchronize the Prisma schema and apply database schema push directly:
 
 ```bash
 npm run prisma:push
+```
+
+Seed the initial Super Admin account (Requires `SUPER_ADMIN_EMAIL` in `.env`):
+
+```bash
+npx prisma db seed
 ```
 
 ### 5. Run the Application
@@ -118,7 +131,7 @@ This project enforces a strict unidirectional flow to ensure complete decoupled 
               │  Payload Validations (Zod)
               ▼
        ┌──────────────┐
-       │ Middlewares  │ ◄─── Auth, Rates, Helmet, CORS, ALS Context
+       │ Middlewares  │ ◄─── Auth, RBAC Gate, Rates, ALS Context
        └──────┬───────┘
               │  Sanitized Requests
               ▼
@@ -130,12 +143,12 @@ This project enforces a strict unidirectional flow to ensure complete decoupled 
        ┌──────────────┐
        │   Services   │ ◄─── Core Business Logic & DB Transactions
        └──────┬───────┘
-              │  Repository Adapters
+              │  Prisma ORM
               ▼
        ┌──────────────┐
-       │ Repositories │ ◄─── Prisma DB Clients
+       │ Silent Guard │ ◄─── Auto-injects Branch Isolation & Soft Delete
        └──────┬───────┘
-              │  Parameterized Query Execution
+              │  Parameterized Query
               ▼
        ┌──────────────┐
        │  PostgreSQL  │
@@ -147,50 +160,41 @@ This project enforces a strict unidirectional flow to ensure complete decoupled 
 ```text
 src/
 ├── app.js                          # Express app, middleware stack, health probes
-├── index.js                        # Server bootstrap, lifecycle, graceful shutdown
-├── docs/                           # Swagger / OpenAPI spec configs
+├── index.js                        # Server bootstrap, lifecycle, workers init, graceful shutdown
 ├── infrastructure/                 # Cross-cutting infrastructure
-│   ├── als.js                      # AsyncLocalStorage instance
-│   ├── cache.js                    # LRU-cache wrapper
+│   ├── als.js                      # AsyncLocalStorage for branch and user context
 │   ├── config.js                   # Zod-validated environment config
 │   ├── logger.js                   # Pino structured logger with ALS proxy
-│   ├── mailer.js                   # Nodemailer transport
+│   ├── email/                      # Nodemailer transport for invitations
 │   ├── metrics.js                  # In-process counters + periodic flush
-│   ├── passport.js                 # JWT strategy
-│   ├── prisma.js                   # Prisma singleton proxy + telemetry
-│   └── workers/                    # Background cron jobs
+│   ├── passport.js                 # Google OAuth + JWT Strategies
+│   ├── prisma.js                   # Prisma proxy with Silent Guardian Extension
+│   └── workers/                    # Distributed Cron Jobs (Session Cleanup, etc.)
 ├── middleware/                     # Transport-layer middleware
-│   ├── auth.middleware.js          # JWT auth + RBAC gate
+│   ├── auth.middleware.js          # Auth + RBAC Dynamic Gate
 │   ├── error.middleware.js         # Error converter + handler
-│   ├── pino-http.middleware.js     # Request logging
-│   ├── rate-limiter.middleware.js  # Three-tier rate limiting
-│   ├── response-interceptor.middleware.js  # Response envelope
-│   └── validate.middleware.js      # Zod validation
+│   └── validate.middleware.js      # Zod validation execution
 ├── modules/                        # Business domain modules
 │   ├── router.js                   # Composition root
-│   ├── iam/                        # Auth, users, RBAC, tokens
-│   ├── notes/                      # Notes CRUD
+│   ├── iam/                        # Auth, Users, Roles, Permissions, Invitations
 │   └── audit/                      # Event audit logging
 └── shared/                         # Stateless utilities
     ├── ApiError.js, CatchAsync.js
-    ├── Paginate.js, PaginateCursor.js
-    ├── Password.js, Pick.js, Tokens.js
-    └── CustomValidator.js
+    └── Paginate.js
 ```
 
 ### Documentation
 
-Detailed project documentation lives in `docs/`:
+Detailed project architecture and domain documentation lives in `docs/`:
 
-| Document                                      | Purpose                                                                   |
-| --------------------------------------------- | ------------------------------------------------------------------------- |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md)       | System architecture, module boundaries, request lifecycle, auth/RBAC flow |
-| [PROJECT_RULES.md](docs/PROJECT_RULES.md)     | Enforced coding conventions and architecture constraints                  |
-| [BUSINESS_RULES.md](docs/BUSINESS_RULES.md)   | Business logic constraints, state transitions, permissions                |
-| [DECISIONS_LOG.md](docs/DECISIONS_LOG.md)     | Architectural decisions with rationale and tradeoffs                      |
-| [API_CONVENTIONS.md](docs/API_CONVENTIONS.md) | Response envelope, rate limits, status codes                              |
-| [DATA_STRATEGY.md](docs/DATA_STRATEGY.md)     | Database patterns, schema summary, deletion strategy                      |
-| [tasks/backlog.md](docs/tasks/backlog.md)     | Prioritized future work and technical debt                                |
+| Document                            | Purpose                                                                |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| `docs/features/iam/0 - overview.md` | High-level overview, Readiness Assessment, Architecture Deviations     |
+| `docs/features/iam/2 - flow.md`     | Core execution flows (Login, Invite, Token Refresh, Worker Lifecycles) |
+| `docs/features/iam/3 - rules.md`    | Business logic constraints, Soft-deletion, Privilege Escalation Guards |
+| `docs/features/iam/4 - domain.md`   | Domain models and the finalized Prisma Schema                          |
+| `docs/features/iam/5 - api.md`      | REST API Route conventions and required RBAC permissions               |
+| `docs/decisions/`                   | Architectural Decision Records (ADRs) explaining technical tradeoffs   |
 
 ---
 
@@ -203,37 +207,19 @@ The following npm scripts are available:
 | `npm run dev`             | Runs the app in development mode with hot-reloading (Nodemon).         |
 | `npm start`               | Runs the app in production mode with PM2 daemon orchestration.         |
 | `npm test`                | Runs unit and integration test suites using Vitest and Testcontainers. |
-| `npm run test:watch`      | Runs Vitest in interactive watch mode.                                 |
 | `npm run coverage`        | Runs tests and generates test coverage report.                         |
 | `npm run prisma:generate` | Generates Prisma Client artifacts.                                     |
 | `npm run prisma:push`     | Synchronizes Prisma schema with database without applying migrations.  |
-| `npm run prisma:studio`   | Launches Prisma Studio database explorer at `http://localhost:5555`.   |
-
-| `npm run lint` | Validates codebase code style and quality rules using ESLint. |
-| `npm run lint:fix` | Automatically resolves auto-fixable ESLint rules. |
-| `npm run prettier` | Validates formatting using Prettier. |
-| `npm run prettier:fix` | Auto-formats the codebase with Prettier rules. |
-
----
-
-## ☁️ Render Deployment Guide
-
-When deploying this application as a **Docker Web Service** on Render, configure the following settings in your Render dashboard:
-
-- **Build Command**: (Leave blank, Render builds the Dockerfile)
-- **Start Command**: (Leave blank, uses `CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]` from Dockerfile)
-- **Health Check Path**: `/ready`
-
-_Note: Database migrations run automatically during container startup, which is safe for Render Free deployments where horizontal scaling isn't applied._
+| `npm run prisma:seed`     | Seeds the database with the initial Super Admin account.               |
 
 ---
 
 ## 🔐 Security & Reliability Standard
 
-- **Dynamic Token Revocation**: Secure JWT lifecycle management. When a refresh token is leaked or reused, the token family tracking invalidates all active tokens associated with that user session.
+- **Dynamic Token Revocation**: Secure JWT lifecycle management. A leaked refresh token used outside the concurrency grace period instantly triggers the Kill-Switch.
 - **SQL Injection Defeated**: Prisma ORM guarantees query parameterization, rendering SQL injection vectors useless.
-- **XSS & HTTP Hardening**: Equipped with custom sanitizers for body payloads, gzip compressions, helmet header security, and smart rate-limiting configurations.
-- **Graceful Failover**: Process exit hooks trap OS signals (`SIGINT`/`SIGTERM`) to wait for pending requests (up to 10s), flush DB client connection pools, and exit cleanly without losing inflight transactions.
+- **Privilege Escalation Prevention**: Strict runtime guards prevent users from assigning roles with privilege levels higher than their own.
+- **Graceful Failover**: Process exit hooks trap OS signals (`SIGINT`/`SIGTERM`) to wait for pending requests and background workers (up to 10s), flush DB connection pools, and exit cleanly.
 
 ---
 

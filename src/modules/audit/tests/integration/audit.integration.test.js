@@ -10,8 +10,8 @@ describe('Audit Infrastructure Integration', () => {
     it('should recursively redact sensitive fields from metadata and persist', async () => {
       const payload = {
         event: 'auth.login',
-        entityType: 'User',
-        entityId: 'user123',
+        targetType: 'User',
+        targetId: '550e8400-e29b-41d4-a716-446655440000',
         action: 'EXECUTE',
         metadata: {
           ip: '127.0.0.1',
@@ -44,8 +44,8 @@ describe('Audit Infrastructure Integration', () => {
           await logEvent(
             {
               event: 'users.updated',
-              entityType: 'User',
-              entityId: 'user456',
+              targetType: 'User',
+              targetId: '660e8400-e29b-41d4-a716-446655440000',
               action: 'UPDATE',
             },
             tx,
@@ -71,20 +71,20 @@ describe('Audit Infrastructure Integration', () => {
     it('should successfully extract reqId and actorId from AsyncLocalStorage without HTTP objects', async () => {
       const store = {
         reqId: 'req-uuid-999',
-        userId: 'actor-uuid-777',
+        userId: '770e8400-e29b-41d4-a716-446655440000',
       };
 
       await als.run(store, async () => {
         const auditLog = await logEvent({
           event: 'notes.created',
-          entityType: 'Note',
-          entityId: 'note123',
+          targetType: 'Note',
+          targetId: '880e8400-e29b-41d4-a716-446655440000',
           action: 'CREATE',
         });
 
         // The service should have pulled these purely from context
         expect(auditLog.reqId).toBe('req-uuid-999');
-        expect(auditLog.actorId).toBe('actor-uuid-777');
+        expect(auditLog.actorId).toBe('770e8400-e29b-41d4-a716-446655440000');
       });
     });
   });
