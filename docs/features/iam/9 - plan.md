@@ -111,14 +111,14 @@
 
 **الاعتماديات:** المرحلة 3 مكتملة.
 
-| المهمة                     | الملف                           | التفاصيل                                                                                                                                           |
-| -------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authorization Middleware   | `middleware/auth.middleware.js` | فحص الصلاحية `action:subject:scope` + Smart Invalidation (roleVersion) + Super Admin bypass (`*:*:*`) + Scope Hierarchy (`any` > `branch` > `own`) |
-| Role Service               | `iam/role.service.js`           | CRUD + `version++` عند التعديل + منع حذف `isSystem` + Reassign Flow                                                                                |
-| Role Controller            | `iam/role.controller.js`        | ————                                                                                                                                               |
-| Role Routes                | `iam/role.route.js`             | `GET /`, `POST /`, `PUT /:roleId`, `DELETE /:roleId`, `PUT /:roleId/reassign`                                                                      |
-| Role Validators            | `iam/role.validator.js`         | Zod schemas                                                                                                                                        |
-| Privilege Escalation Guard | داخل `role.service.js`          | `actor.role.level >= targetRole.level`                                                                                                             |
+| المهمة                     | الملف                           | التفاصيل                                                                                                                               |
+| -------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization Middleware   | `middleware/auth.middleware.js` | فحص الصلاحية `action:subject:scope` + Direct-DB Resolution + Super Admin bypass (`*:*:*`) + Scope Hierarchy (`any` > `branch` > `own`) |
+| Role Service               | `iam/role.service.js`           | CRUD + `version++` عند التعديل + منع حذف `isSystem` + Reassign Flow                                                                    |
+| Role Controller            | `iam/role.controller.js`        | ————                                                                                                                                   |
+| Role Routes                | `iam/role.route.js`             | `GET /`, `POST /`, `PUT /:roleId`, `DELETE /:roleId`, `PUT /:roleId/reassign`                                                          |
+| Role Validators            | `iam/role.validator.js`         | Zod schemas                                                                                                                            |
+| Privilege Escalation Guard | داخل `role.service.js`          | `actor.role.level >= targetRole.level`                                                                                                 |
 
 **معيار الخروج:** تحديث صلاحيات دور → `version` يزداد → الطلب التالي بالتوكن القديم يُرفض `401`.
 

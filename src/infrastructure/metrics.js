@@ -1,10 +1,6 @@
 import { logger } from './logger.js';
 
 export const metrics = {
-  cache: {
-    hits: 0,
-    misses: 0,
-  },
   workers: {
     active: 0,
     completed: 0,
@@ -17,12 +13,6 @@ export const metrics = {
   auth: {
     authorizationDenied: 0,
   },
-};
-
-const getCacheHitRatio = () => {
-  const total = metrics.cache.hits + metrics.cache.misses;
-  if (total === 0) return 0;
-  return (metrics.cache.hits / total).toFixed(2);
 };
 
 const getAverageWorkerDurationMs = () => {
@@ -38,7 +28,6 @@ export const startMetricsFlusher = (intervalMs = 60000) => {
     logger.info(
       {
         event: 'system.metrics',
-        cacheHitRatio: parseFloat(getCacheHitRatio()),
         activeWorkers: metrics.workers.active,
         avgWorkerDurationMs: getAverageWorkerDurationMs(),
         slowQueries: metrics.db.slowQueries,

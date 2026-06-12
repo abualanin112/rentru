@@ -158,7 +158,7 @@ model Permission {
 }
 
 // ==========================================
-// 3. Join Tables (جداول الربط)
+// 3. Join Tables
 // ==========================================
 
 model RolePermission {
@@ -188,7 +188,7 @@ model UserRole {
 }
 
 // ==========================================
-// 4. Audit Log (سجل التتبع الأمني) - 🌟 جديد 🌟
+// 4. Audit Log
 // ==========================================
 
 model AuditLog {
@@ -206,6 +206,9 @@ model AuditLog {
   // على من وقع الفعل؟ (المفعول به - اختياري)
   targetId   String? @map("target_id") @db.Uuid
   targetType String? @map("target_type") @db.VarChar(50) // "User", "Role", "Branch"
+
+  // لقطة الفرع وقت وقوع الحدث (Snapshot At Event Time)
+  branchId String? @map("branch_id") @db.Uuid
 
   // تتبع التغييرات الدقيقة
   oldValues Json?   @map("old_values") @db.JsonB
@@ -225,5 +228,20 @@ model AuditLog {
   @@index([reqId])
   @@index([event, createdAt])
   @@index([createdAt])
+  @@index([targetType, targetId]) // للبحث الخاص بالكيانات المحددة
+  @@index([branchId, createdAt]) // للعزل المناطقي والفرز
   @@map("audit_logs")
+}
+
+// ==========================================
+// 5. Audit Export Cursor (Cold Storage)
+// ==========================================
+
+model AuditExportCursor {
+  id                    String   @id @db.VarChar(50) // e.g. "cloudflare-r2-export"
+  lastExportedCreatedAt DateTime @map("last_exported_created_at")
+  lastExportedId        String   @map("last_exported_id") @db.Uuid
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("audit_export_cursors")
 }

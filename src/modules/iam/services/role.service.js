@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import { prisma, runInTransaction } from '../../../infrastructure/prisma.js';
 import { ApiError } from '../../../shared/ApiError.js';
 import { getMaxRoleLevel, hasPermission } from './permission.service.js';
+import { logEvent, logEventAsync } from '../../audit/index.js';
 
 /**
  * Ensures the actor's privilege level is sufficient to interact with the target role level.
@@ -28,9 +29,20 @@ export const createRole = async (actorId, roleData) => {
   // Prevent creation of system roles through API
   const data = { ...roleData, isSystem: false };
 
-  return prisma.role.create({
+  const newRole = await prisma.role.create({
     data,
   });
+
+  logEventAsync({
+    event: 'iam.role.created',
+    targetType: 'Role',
+    targetId: newRole.id,
+    action: 'CREATE',
+    actorId,
+    metadata: { name: newRole.name, level: newRole.level },
+  });
+
+  return newRole;
 };
 
 /**
@@ -66,7 +78,7 @@ export const getRoleById = async (roleId) => {
 
 /**
  * Update a role's metadata or permissions.
- * Automatically increments the version to trigger Smart Invalidation for all users holding this role.
+ * Automatically increments the version.
  */
 export const updateRole = async (actorId, roleId, updateData) => {
   const role = await getRoleById(roleId);
@@ -81,12 +93,23 @@ export const updateRole = async (actorId, roleId, updateData) => {
   // Prevent modifying isSystem flag
   delete updateData.isSystem;
 
-  return prisma.role.update({
+  const updatedRole = await prisma.role.update({
     where: { id: roleId },
     data: {
       ...updateData,
     },
   });
+
+  logEventAsync({
+    event: 'iam.role.updated',
+    targetType: 'Role',
+    targetId: roleId,
+    action: 'UPDATE',
+    actorId,
+    metadata: updateData,
+  });
+
+  return updatedRole;
 };
 
 /**
@@ -116,6 +139,15 @@ export const deleteRole = async (actorId, roleId) => {
 
   await prisma.role.delete({
     where: { id: roleId },
+  });
+
+  logEventAsync({
+    event: 'iam.role.deleted',
+    targetType: 'Role',
+    targetId: roleId,
+    action: 'DELETE',
+    actorId,
+    metadata: { name: role.name },
   });
 };
 
@@ -199,5 +231,17 @@ export const updateRolePermissions = async (actorId, roleId, permissionIds) => {
         data,
       });
     }
+
+    await logEvent(
+      {
+        event: 'iam.role.updated',
+        targetType: 'Role',
+        targetId: roleId,
+        action: 'UPDATE',
+        actorId,
+        reason: 'Permissions updated completely',
+      },
+      tx,
+    );
   });
 };

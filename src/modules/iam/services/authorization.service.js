@@ -48,13 +48,7 @@ const assertScopedPermission = async (actor, resourceOwnerId, action, resource) 
   if (!isOwnResource) {
     // Cross-resource access attempt without :any scope is a potential escalation
     logger.error({ ...logContext, event: 'authz.escalation.attempted' }, 'Suspicious privilege escalation attempt');
-    await logEvent({
-      event: 'authz.escalation.attempted',
-      entityType: resource,
-      entityId: resourceOwnerId,
-      action: action.toUpperCase(),
-      reason: `Attempted ${action}:${resource}:any without permission`,
-    });
+    // Note: Removed logEvent for authz.escalation.attempted as it is not in the approved Audit Event Catalog.
   } else {
     logger.warn(logContext, `Denied ${action} access to own ${resource}`);
   }
@@ -158,13 +152,7 @@ const assertCanAssignRole = async (actor, targetRoleId) => {
       },
       'Privilege escalation attempt — target role level exceeds actor level',
     );
-    await logEvent({
-      event: 'authz.escalation.attempted',
-      entityType: 'Role',
-      entityId: targetRoleId,
-      action: 'EXECUTE',
-      reason: `Attempted to assign role "${targetRole.name}" (level ${targetRole.level}) but actor max level is ${actorMaxLevel}`,
-    });
+    // Note: Removed logEvent for authz.escalation.attempted as it is not in the approved Audit Event Catalog.
     throw new ApiError(httpStatus.FORBIDDEN, 'Cannot assign a role with a higher privilege level than your own');
   }
 
@@ -175,7 +163,7 @@ const assertCanAssignRole = async (actor, targetRoleId) => {
  * Assign a role to a user.
  *
  * Enforces escalation prevention, creates the UserRole record,
- * logs the audit event, and invalidates the user's permission cache.
+ * and logs the audit event.
  *
  * @param {Object} actor - The user performing the assignment
  * @param {string} targetUserId - The user receiving the role
@@ -199,17 +187,15 @@ const assignRoleToUser = async (actor, targetUserId, roleId) => {
     // 3. Trigger audit log for assignment
     await logEvent(
       {
-        event: 'authz.role.assigned',
-        entityType: 'UserRole',
-        entityId: userRole.id,
+        event: 'iam.permission.assigned',
+        targetType: 'UserRole',
+        targetId: userRole.id,
         action: 'CREATE',
         actorId: actor.id,
         metadata: { targetUserId, roleId },
       },
       tx,
     );
-
-    // 4. Smart Invalidation: The next request will fetch new roleVersions and cache miss automatically
 
     logger.info(
       { event: 'authz.role.assigned', actorId: actor.id, targetUserId, roleId },

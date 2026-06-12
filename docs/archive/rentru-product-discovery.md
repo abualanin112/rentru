@@ -238,4 +238,4 @@ Long-term platform goals:
 - Payment link state updates within 10s after webhook (or shows pending state).
 - Check-in flow completes in < 30s (find booking, print contract, accept payment, change unit state).
 - Expense capture (mobile) takes < 45s including photo upload and auto-approval checks.
-- Unit P&L loads < 500ms (uses cached summary) and allows drill-down to transactions.
+- Unit P&L loads < 500ms (direct PostgreSQL query) and allows drill-down to transactions.

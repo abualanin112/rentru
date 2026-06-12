@@ -82,7 +82,7 @@ export default [
             },
             {
               from: { type: 'audit' },
-              allow: { to: { type: ['shared', 'audit', 'infrastructure'] } },
+              allow: { to: { type: ['shared', 'audit', 'infrastructure', 'iam'] } },
             },
             {
               from: { type: 'infrastructure' },

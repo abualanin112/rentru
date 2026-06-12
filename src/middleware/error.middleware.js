@@ -10,8 +10,15 @@ const errorConverter = (err, req, res, next) => {
     // eslint-disable-next-line security/detect-object-injection
     let message = error.message || httpStatus[statusCode];
 
+    // Handle Zod Validation Errors
+    if (error.name === 'ZodError') {
+      statusCode = httpStatus.BAD_REQUEST;
+      const issues = error.issues || error.errors || [];
+      message = issues.map((details) => details.message).join(', ') || 'Validation failed';
+      error.name = 'VALIDATION_ERROR';
+    }
     // Handle JWT specific errors
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
+    else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
       statusCode = httpStatus.UNAUTHORIZED;
       message = 'Invalid or expired token';
       error.name = 'UNAUTHORIZED';

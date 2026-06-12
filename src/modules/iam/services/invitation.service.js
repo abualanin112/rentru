@@ -77,9 +77,9 @@ export const createInvitation = async (actorId, { email, roleId, branchId }) => 
 
     await logEvent(
       {
-        event: 'invitation.created',
-        entityType: 'Invitation',
-        entityId: newInvite.id,
+        event: 'iam.invitation.created',
+        targetType: 'Invitation',
+        targetId: newInvite.id,
         actorId,
         action: 'CREATE',
         metadata: { email: normalizedEmail, roleId, branchId },
@@ -140,9 +140,9 @@ export const revokeInvitation = async (actorId, invitationId) => {
 
     await logEvent(
       {
-        event: 'invitation.revoked',
-        entityType: 'Invitation',
-        entityId: invitationId,
+        event: 'iam.invitation.revoked',
+        targetType: 'Invitation',
+        targetId: invitationId,
         actorId,
         action: 'DELETE',
         metadata: { email: invitation.email },

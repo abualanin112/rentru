@@ -4,6 +4,7 @@ import { ApiError } from '../../../shared/ApiError.js';
 import { generateAuthTokens, verifyToken, tokenTypes, hashToken } from './token.service.js';
 import { upsertSession, getSession, destroySession } from './session.service.js';
 import crypto from 'crypto';
+import { logEvent, logEventAsync } from '../../audit/index.js';
 
 /**
  * Handles Google OAuth Login and Invitation Provisioning.
@@ -55,6 +56,17 @@ export const handleGoogleLogin = async (profile, deviceId, inviteToken = null) =
           expiresAt: finalTokens.refresh.expires,
         },
       });
+
+      await logEvent(
+        {
+          event: 'iam.auth.login.success',
+          targetType: 'User',
+          targetId: user.id,
+          action: 'EXECUTE',
+          metadata: { deviceId },
+        },
+        tx,
+      );
 
       return { user, tokens: finalTokens };
     } else {
@@ -137,6 +149,28 @@ export const handleGoogleLogin = async (profile, deviceId, inviteToken = null) =
         },
       });
 
+      await logEvent(
+        {
+          event: 'iam.auth.login.success',
+          targetType: 'User',
+          targetId: newUser.id,
+          action: 'EXECUTE',
+          metadata: { deviceId, isNewProvision: true },
+        },
+        tx,
+      );
+
+      await logEvent(
+        {
+          event: 'iam.user.created',
+          targetType: 'User',
+          targetId: newUser.id,
+          action: 'CREATE',
+          metadata: { email },
+        },
+        tx,
+      );
+
       return { user: newUser, tokens };
     }
   });
@@ -179,6 +213,16 @@ export const refreshAuth = async (refreshToken, deviceId, _ipAddress = null) => 
       } else {
         // Token mismatch and outside grace period means stolen token reuse!
         await destroySession(payload.sub);
+
+        logEventAsync({
+          event: 'iam.token.revoked',
+          targetType: 'Session',
+          targetId: session.id,
+          action: 'DELETE',
+          reason: 'Token reuse detected',
+          metadata: { deviceId },
+        });
+
         throw new ApiError(httpStatus.UNAUTHORIZED, 'Security violation: Refresh token reuse detected. Session revoked.');
       }
     }
@@ -190,6 +234,14 @@ export const refreshAuth = async (refreshToken, deviceId, _ipAddress = null) => 
     // Wait, upsert update branch does NOT update createdAt because it's not mapped.
     // If we want createdAt to act as updatedAt, we must explicitly set it.
     await upsertSession(payload.sub, tokens.refresh.token, deviceId, tokens.refresh.expires, session.id);
+
+    logEventAsync({
+      event: 'iam.token.refresh',
+      targetType: 'Session',
+      targetId: session.id,
+      action: 'UPDATE',
+      metadata: { deviceId },
+    });
 
     return tokens;
   } catch (error) {
@@ -205,4 +257,11 @@ export const refreshAuth = async (refreshToken, deviceId, _ipAddress = null) => 
  */
 export const logout = async (userId) => {
   await destroySession(userId);
+
+  logEventAsync({
+    event: 'iam.auth.logout',
+    targetType: 'User',
+    targetId: userId,
+    action: 'EXECUTE',
+  });
 };

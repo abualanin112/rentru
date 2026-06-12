@@ -44,7 +44,7 @@ The system is built as a Modular Monolith, strictly divided into explicit bounda
 - **Database**: PostgreSQL 16
 - **ORM**: Prisma 6.x
 - **Authentication**: Passport.js (JWT)
-- **Caching**: In-memory LRU (with Redis support planned/available for infrastructure)
+
 - **Validation**: Zod
 - **Testing**: Vitest
 

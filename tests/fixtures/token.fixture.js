@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { config } from '../../src/infrastructure/config.js';
-import { tokenTypes } from '../../src/shared/Tokens.js';
 import * as tokenService from '../../src/modules/iam/services/token.service.js';
+const { tokenTypes } = tokenService;
 import { userOne, admin } from './user.fixture.js';
 
 const accessTokenExpires = dayjs().add(config.jwt.accessExpirationMinutes, 'minutes');

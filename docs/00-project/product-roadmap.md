@@ -38,4 +38,3 @@ This phase focuses on improving administrative workflows, data retention policie
 
 - **Multi-Tenancy / Organizations**: The current schema is strictly single-tenant. If B2B expansion is desired, an `Organization` or `Tenant` domain will be needed.
 - **Note Sharing / Collaboration**: Currently, notes are strictly tied to an `ownerId`. Enabling shared access between users would require a junction table (e.g., `NoteCollaborator`).
-- **Redis Infrastructure Completion**: Global rules mention Redis boot validation, but caching is currently in-memory LRU. Migrating cache and rate-limiting to Redis for horizontal scalability.

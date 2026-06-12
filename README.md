@@ -24,12 +24,19 @@ This backend represents a complete, secure, and production-ready enterprise solu
   - Instant Kill-Switch capabilities via `isActive` status for immediate operator suspension.
 - **Dynamic Database-Driven RBAC**:
   - Roles and permissions are fully dynamic and managed in the database, requiring no code deployments for changes.
-  - Features Smart Invalidation: token permissions are instantly rejected if the backend detects a role version mismatch.
+  - Permissions are fully resolved via direct database queries on every request.
 - **Silent Guardian (Data Isolation)**:
   - Custom Prisma Client Extension that automatically injects `branchId` filters and `deletedAt: null` (Soft Delete) guards into every query.
   - Ensures robust multi-branch geographic data isolation natively at the ORM layer.
 - **Resilient Audit Logging**:
   - Dedicated `AuditLog` capturing crucial system events, actor details, and deep JSON diffs (`oldValues`/`newValues`).
+- **Universal Cursor Pagination Engine**:
+  - Deterministic tuple-based cursor pagination (`(timestamp, id)`) for large-scale, high-concurrency transactional datasets.
+  - Generates opaque Base64-encoded JSON cursors for clients and fully respects the ORM-level **Silent Guardian** branch isolation.
+  - Guaranteed $O(1)$ query complexity utilizing mandatory database composite indexes.
+- **Robust Global Error Handling**:
+  - Centralized Express middleware stack that intercepts and standardizes JWT, database constraint violations, and schema parsing errors.
+  - Natively maps all `ZodError` exceptions (thrown during request validation or manual parsing) directly to structured `400 Bad Request` payloads.
 - **Distributed Background Workers**:
   - Singleton execution enforced via PostgreSQL advisory locks (`pg_try_advisory_lock`).
   - Automated session garbage collection, idle user deactivation, and expired invitation cleanup.
@@ -180,7 +187,8 @@ src/
 │   └── audit/                      # Event audit logging
 └── shared/                         # Stateless utilities
     ├── ApiError.js, CatchAsync.js
-    └── Paginate.js
+    ├── Paginate.js, CursorPaginate.js
+    └── CursorValidator.js
 ```
 
 ### Documentation

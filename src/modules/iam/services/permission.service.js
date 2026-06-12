@@ -93,7 +93,7 @@ const matchesPermission = (grantedPermissions, requiredPermission) => {
 
 /**
  * Convenience wrapper: check if a user holds a specific permission.
- * Involves a cache/DB lookup via `getUserPermissions`, then delegates
+ * Involves a direct DB lookup via `getUserPermissions`, then delegates
  * to the pure `matchesPermission` for the actual check.
  *
  * @param {string} userId - The user's CUID

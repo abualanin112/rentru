@@ -44,6 +44,10 @@ const envVarsSchema = z
     GOOGLE_CLIENT_ID: z.string().min(1).describe('Google OAuth Client ID'),
     GOOGLE_CLIENT_SECRET: z.string().min(1).describe('Google OAuth Client Secret'),
     GOOGLE_CALLBACK_URL: z.string().url().describe('Google OAuth Callback URL'),
+    CLOUDFLARE_ACCOUNT_ID: z.string().optional().describe('Cloudflare Account ID for R2'),
+    CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().optional().describe('Cloudflare R2 Access Key ID'),
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().optional().describe('Cloudflare R2 Secret Access Key'),
+    CLOUDFLARE_R2_BUCKET_NAME: z.string().optional().describe('Cloudflare R2 Bucket Name for Audit Logs'),
   })
   .passthrough();
 
@@ -96,6 +100,12 @@ const config = {
       clientSecret: envVars.GOOGLE_CLIENT_SECRET,
       callbackUrl: envVars.GOOGLE_CALLBACK_URL,
     },
+  },
+  cloudflare: {
+    accountId: envVars.CLOUDFLARE_ACCOUNT_ID,
+    accessKeyId: envVars.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: envVars.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    bucketName: envVars.CLOUDFLARE_R2_BUCKET_NAME,
   },
 };
 

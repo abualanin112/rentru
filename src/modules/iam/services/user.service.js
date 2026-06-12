@@ -86,18 +86,19 @@ export const suspendUser = async (actorId, targetUserId) => {
   await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
 
   return runInTransaction(async (tx) => {
-    const updatedUser = await tx.user.update({
+    await tx.user.updateMany({
       where: { id: targetUserId },
       data: { isActive: false },
     });
+    const updatedUser = await tx.user.findFirst({ where: { id: targetUserId } });
 
     await destroySession(targetUserId);
 
     await logEvent(
       {
-        event: 'user.suspended',
-        entityType: 'User',
-        entityId: targetUserId,
+        event: 'iam.user.suspended',
+        targetType: 'User',
+        targetId: targetUserId,
         actorId,
         action: 'SUSPEND',
       },
@@ -130,18 +131,20 @@ export const archiveUser = async (actorId, targetUserId) => {
   // Wait until those modules are deployed in the ERP.
 
   return runInTransaction(async (tx) => {
-    const updatedUser = await tx.user.update({
+    await tx.user.updateMany({
       where: { id: targetUserId },
       data: { deletedAt: new Date() },
     });
+    // Can't findFirst if it's archived due to Silent Guardian
+    const updatedUser = { id: targetUserId, deletedAt: new Date() };
 
     await destroySession(targetUserId);
 
     await logEvent(
       {
-        event: 'user.archived',
-        entityType: 'User',
-        entityId: targetUserId,
+        event: 'iam.user.archived',
+        targetType: 'User',
+        targetId: targetUserId,
         actorId,
         action: 'ARCHIVE',
       },
@@ -168,16 +171,17 @@ export const activateUser = async (actorId, targetUserId) => {
   await enforcePrivilegeEscalationGuard(actorId, targetMaxLevel);
 
   return runInTransaction(async (tx) => {
-    const updatedUser = await tx.user.update({
+    await tx.user.updateMany({
       where: { id: targetUserId },
       data: { isActive: true },
     });
+    const updatedUser = await tx.user.findFirst({ where: { id: targetUserId } });
 
     await logEvent(
       {
-        event: 'user.activated',
-        entityType: 'User',
-        entityId: targetUserId,
+        event: 'iam.user.activated',
+        targetType: 'User',
+        targetId: targetUserId,
         actorId,
         action: 'ACTIVATE',
       },
@@ -220,9 +224,9 @@ export const restoreUser = async (actorId, targetUserId) => {
     // 3. Log the restoration event
     await logEvent(
       {
-        event: 'user.restored',
-        entityType: 'User',
-        entityId: targetUserId,
+        event: 'iam.user.updated',
+        targetType: 'User',
+        targetId: targetUserId,
         actorId,
         action: 'RESTORE',
       },

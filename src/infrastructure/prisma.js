@@ -77,9 +77,11 @@ const createClientInstance = () => {
           ) {
             // Reroute findUnique to findFirst to support non-unique where clauses (Soft Delete / Branch Isolation)
             if (operation === 'findUnique') {
+              // eslint-disable-next-line security/detect-object-injection
               return prismaClient[model].findFirst(args);
             }
             if (operation === 'findUniqueOrThrow') {
+              // eslint-disable-next-line security/detect-object-injection
               return prismaClient[model].findFirstOrThrow(args);
             }
 

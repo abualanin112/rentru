@@ -15,7 +15,7 @@ The system follows a Modular Monolith architectural pattern. This ensures that t
 The project structure strictly separates transport, infrastructure, and business logic:
 
 - `src/app.js` and `src/index.js`: Composition root, express setup, and application lifecycle.
-- `src/infrastructure/`: Shared technical capabilities that are decoupled from business logic (Prisma, Redis, Logging, Email).
+- `src/infrastructure/`: Shared technical capabilities that are decoupled from business logic (Prisma, Logging, Email).
 - `src/middleware/`: Global Express middleware representing cross-cutting transport concerns.
 - `src/modules/`: Self-contained business domains.
 - `src/shared/`: Stateless utilities and reusable generic helpers.
@@ -40,7 +40,6 @@ graph LR
     subgraph Infrastructure
         PRISMA["prisma"]
         LOGGER["logger"]
-        CACHE["cache"]
         ALS["als"]
         EMAIL["email"]
     end
@@ -55,7 +54,6 @@ graph LR
     IAM --> PRISMA
     NOTES --> PRISMA
     AUDIT --> PRISMA
-    IAM --> CACHE
 ```
 
 ### Inter-Module Communication

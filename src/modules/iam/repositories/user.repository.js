@@ -35,16 +35,12 @@ const findById = async (id, options = {}, tx = prisma) => {
 /**
  * Find user by email
  * @param {string} email
- * @param {Object} [options]
- * @param {boolean} [options.includePassword=false] - Whether to explicitly return password hash
  * @param {Object} [tx=prisma] - Optional Prisma transaction client
  * @returns {Promise<Object|null>}
  */
-const findByEmail = async (email, options = {}, tx = prisma) => {
-  const { includePassword = false } = options;
+const findByEmail = async (email, tx = prisma) => {
   return tx.user.findUnique({
     where: { email },
-    omit: { password: !includePassword },
   });
 };
 

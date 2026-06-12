@@ -58,6 +58,7 @@ const logEvent = async ({ event, targetType, targetId, action, metadata = null, 
     const store = asyncLocalStorage.getStore();
     const actorId = store?.userId || null;
     const reqId = store?.reqId || null;
+    const branchId = store?.branchId || null;
 
     let safeMetadata = null;
     if (metadata) {
@@ -69,6 +70,7 @@ const logEvent = async ({ event, targetType, targetId, action, metadata = null, 
       event,
       reqId,
       actorId,
+      branchId,
       targetType,
       targetId,
       action,
@@ -84,4 +86,15 @@ const logEvent = async ({ event, targetType, targetId, action, metadata = null, 
   }
 };
 
-export { logEvent, sanitizeMetadata };
+/**
+ * Fire-and-Forget Async Wrapper for logEvent
+ * Ensures audit failures outside transactions do not crash the Node.js process.
+ */
+const logEventAsync = (payload) => {
+  logEvent(payload).catch((error) => {
+    // The inner logEvent already logs the error, but this catch blocks UnhandledPromiseRejection
+    logger.warn({ err: error, event: payload.event }, 'Fire-and-forget audit log failed silently.');
+  });
+};
+
+export { logEvent, logEventAsync, sanitizeMetadata };

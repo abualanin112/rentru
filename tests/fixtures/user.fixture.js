@@ -1,35 +1,9 @@
-import { faker } from '@faker-js/faker';
 import { prisma } from '../../src/infrastructure/prisma.js';
-import crypto from 'node:crypto';
+import { buildUser } from '../factories/user.factory.js';
 
-const createCuid2 = () => crypto.randomUUID();
-
-const userOne = {
-  id: createCuid2(),
-  firstName: faker.person.firstName(),
-  lastName: faker.person.lastName(),
-  email: faker.internet.email().toLowerCase(),
-  roleName: 'standard_user',
-  isActive: true,
-};
-
-const userTwo = {
-  id: createCuid2(),
-  firstName: faker.person.firstName(),
-  lastName: faker.person.lastName(),
-  email: faker.internet.email().toLowerCase(),
-  roleName: 'standard_user',
-  isActive: true,
-};
-
-const admin = {
-  id: createCuid2(),
-  firstName: faker.person.firstName(),
-  lastName: faker.person.lastName(),
-  email: faker.internet.email().toLowerCase(),
-  roleName: 'super_admin',
-  isActive: true,
-};
+const userOne = buildUser({ roleName: 'standard_user' });
+const userTwo = buildUser({ roleName: 'standard_user' });
+const admin = buildUser({ roleName: 'super_admin' });
 
 const insertUsers = async (users) => {
   let time = Date.now();
@@ -41,8 +15,8 @@ const insertUsers = async (users) => {
       lastName: user.lastName,
       email: user.email,
       isActive: user.isActive,
-      createdAt: new Date(time),
-      updatedAt: new Date(time),
+      createdAt: user.createdAt || new Date(time),
+      updatedAt: user.updatedAt || new Date(time),
     });
     time -= 1000;
   }

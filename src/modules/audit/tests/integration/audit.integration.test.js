@@ -1,5 +1,6 @@
 import { runInTransaction, prisma } from '../../../../infrastructure/prisma.js';
 import { logEvent } from '../../index.js';
+import * as auditRepository from '../../audit.repository.js';
 import { als } from '../../../../infrastructure/als.js';
 import { setupTestDB } from '../../../../../tests/utils/setupTestDB.js';
 
@@ -86,6 +87,48 @@ describe('Audit Infrastructure Integration', () => {
         expect(auditLog.reqId).toBe('req-uuid-999');
         expect(auditLog.actorId).toBe('770e8400-e29b-41d4-a716-446655440000');
       });
+    });
+  });
+
+  describe('Universal Cursor Pagination Engine Integration', () => {
+    it('should deterministically paginate records created at the exact same millisecond', async () => {
+      // 1. Create multiple records with the exact same createdAt timestamp to simulate a high-concurrency burst
+      const exactTime = new Date('2026-06-12T10:00:00.000Z');
+
+      // Use Prisma client directly to force the createdAt timestamp (logEvent overrides it with now())
+      await prisma.auditLog.createMany({
+        data: [
+          { event: 'concurrent.test', action: 'CREATE', createdAt: exactTime },
+          { event: 'concurrent.test', action: 'CREATE', createdAt: exactTime },
+          { event: 'concurrent.test', action: 'CREATE', createdAt: exactTime },
+          { event: 'concurrent.test', action: 'CREATE', createdAt: exactTime },
+        ],
+      });
+
+      // 2. Fetch the first page (limit: 2)
+      const page1 = await auditRepository.findManyWithCursor({
+        event: 'concurrent.test',
+        limit: 2,
+      });
+
+      expect(page1.data).toHaveLength(2);
+      expect(page1.pagination.hasMore).toBe(true);
+      expect(page1.pagination.nextCursor).toBeDefined();
+
+      // 3. Fetch the second page using the tuple cursor
+      const page2 = await auditRepository.findManyWithCursor({
+        event: 'concurrent.test',
+        limit: 2,
+        cursor: page1.pagination.nextCursor,
+      });
+
+      expect(page2.data).toHaveLength(2);
+      expect(page2.pagination.hasMore).toBe(false);
+
+      // Verify no duplicates across pages
+      const allIds = [...page1.data, ...page2.data].map((r) => r.id);
+      const uniqueIds = new Set(allIds);
+      expect(uniqueIds.size).toBe(4);
     });
   });
 });

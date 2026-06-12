@@ -1,5 +1,6 @@
 import express from 'express';
 import { registerIamModule } from './iam/index.js';
+import { auditRoute } from './audit/index.js';
 
 import { config } from '../infrastructure/config.js';
 import * as rateLimiter from '../middleware/rate-limiter.middleware.js';
@@ -10,6 +11,8 @@ const router = express.Router();
 registerIamModule(router, {
   authLimiter: config.env === 'production' ? rateLimiter.authLimiter : undefined,
 });
+
+router.use('/audit', auditRoute);
 
 // DEV Routes
 /* istanbul ignore next */

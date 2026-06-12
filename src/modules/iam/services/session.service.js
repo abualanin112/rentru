@@ -58,14 +58,7 @@ export const getSession = async (userId, deviceId) => {
  * Destroys a user's session (Logout or Kill-Switch).
  */
 export const destroySession = async (userId) => {
-  try {
-    await prisma.session.delete({
-      where: { userId },
-    });
-  } catch (error) {
-    // Ignore error if session doesn't exist
-    if (error.code !== 'P2025') {
-      throw error;
-    }
-  }
+  await prisma.session.deleteMany({
+    where: { userId },
+  });
 };

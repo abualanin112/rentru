@@ -23,6 +23,24 @@ Strict, actionable engineering rules enforced across the codebase. Every rule is
   - `infrastructure` → `shared`, `infrastructure`, `iam`
   - `app` → `shared`, `iam`, `notes`, `infrastructure`, `docs`
 - Internal module files may import siblings directly (avoid importing through `index.js` within the same module to prevent circular dependencies).
+- explicit boundaries
+- runtime stability
+- minimal dependencies
+- maintainability
+
+---
+
+# Core Rules
+
+## Testing Architecture
+
+Testing rules, ADRs, and the Testcontainer/Integration policies are formally defined in:
+
+```txt
+docs/TESTING_RULES.md
+```
+
+You MUST adhere to these rules when creating or modifying tests.
 
 ## Barrel File Rules
 
@@ -85,7 +103,7 @@ All cross-cutting infrastructure lives in `src/infrastructure/`:
 - `prisma.js` — Prisma client singleton with proxy, slow query telemetry
 - `config.js` — Zod-validated environment configuration
 - `logger.js` — Pino structured logger with ALS-aware proxy
-- `cache.js` — LRU-cache wrapper (in-memory)
+
 - `als.js` — AsyncLocalStorage instance for request-scoped context
 - `metrics.js` — In-process counters with periodic flush
 - `passport.js` — JWT strategy setup
@@ -100,12 +118,9 @@ Infrastructure must NOT live in `shared/`.
 
 - `ApiError.js` — custom error class with `statusCode`, `isOperational`
 - `CatchAsync.js` — async Express handler wrapper
-- `CustomValidator.js` — reusable Zod custom validators
+- `CursorPaginate.js` — deterministic tuple cursor pagination engine
 - `Paginate.js` — offset pagination utility
-- `PaginateCursor.js` — cursor pagination utility
-- `Password.js` — bcrypt hash/compare
 - `Pick.js` — object property picker
-- `Tokens.js` — token type constants
 
 No infrastructure, business logic, or repositories in `shared/`.
 
@@ -172,6 +187,16 @@ Global Express middleware in `src/middleware/`:
 - After every iteration: `npm run lint`, `npm run test`, `node src/index.js`.
 - Validate: ESM resolution, runtime boot, route registration, Prisma boot, dependency graph stability.
 - Use `npx madge --circular src/` after major structural refactors.
+
+## Pagination Policy
+
+- **Offset Pagination (`Paginate.js`)**: Approved **only** for administrative datasets (e.g., Users, Roles, Invitations).
+- **Cursor Pagination (`CursorPaginate.js`)**: Mandatory for chronological, transactional datasets (e.g., Audit, Notes, Ledgers).
+- **Deterministic Ordering**: Cursor pagination must use tuple sorting `(timestamp, id)` to prevent pagination drift under high concurrency. Single-field cursors on UUIDv4 primary keys are strictly forbidden.
+- **Validation & Errors**: Malformed base64 cursors or invalid payloads must be gracefully caught and rejected as `400 Bad Request`. They must never trigger `500 Internal Server Error`.
+- **Composite Indexes**: Any model utilizing Cursor Pagination MUST define a composite index covering the tuple fields with matching sort direction (e.g. `@@index([createdAt(sort: Desc), id(sort: Desc)])`) to ensure O(1) scalability.
+- **Branch Isolation**: Cursor Pagination leverages Prisma delegates natively, ensuring full compatibility with the Silent Guardian middleware and Branch Isolation constraints without raw SQL bypasses.
+- **Backward Pagination**: Intentionally deferred. Current ERP modules only require chronological forward feeds. Support for backward navigation (`take: -limit`) may be implemented in future revisions when Data Grid requirements arise.
 
 ---
 

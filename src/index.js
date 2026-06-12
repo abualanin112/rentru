@@ -5,7 +5,7 @@ import { config } from './infrastructure/config.js';
 import { startMetricsFlusher } from './infrastructure/metrics.js';
 import { logger } from './infrastructure/logger.js';
 import { prisma } from './infrastructure/prisma.js';
-import { startTokenCleanupJob } from './infrastructure/workers/token-cleanup.worker.js';
+
 import { startAllWorkers, stopAllWorkers } from './infrastructure/workers/index.js';
 import { verifySmtpConnection } from './infrastructure/email/index.js';
 
@@ -50,7 +50,6 @@ const bootstrap = async () => {
 
     // 4. Initialize background workers if enabled for this node
     if (config.enableBackgroundWorkers) {
-      global.tokenCleanupTask = startTokenCleanupJob();
       startAllWorkers();
       logger.info('Background workers enabled on this node.');
     } else {
@@ -79,10 +78,7 @@ const performShutdown = async () => {
   }
 
   // 2. Stop Cron Scheduling
-  if (global.tokenCleanupTask) {
-    global.tokenCleanupTask.stop();
-    logger.info('Token cleanup cron job stopped');
-  }
+
   if (config.enableBackgroundWorkers) {
     stopAllWorkers();
   }

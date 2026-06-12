@@ -69,6 +69,7 @@
     "production-ready"
   ],
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1067.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
@@ -81,7 +82,6 @@
     "helmet": "^7.2.0",
     "http-status": "^1.4.0",
     "jsonwebtoken": "^9.0.3",
-    "lru-cache": "^11.5.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
     "passport": "^0.7.0",
